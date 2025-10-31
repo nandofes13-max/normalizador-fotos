@@ -1,7 +1,7 @@
 // Configuración
 const API_URL = 'https://normalizador-fotos.onrender.com';
 let currentPlatform = 'kyte';
-let selectedFiles = [];
+let currentFile = null;
 
 // Elementos DOM
 const elements = {
@@ -13,9 +13,14 @@ const elements = {
     heightValue: document.getElementById('heightValue'),
     widthSlider: document.getElementById('widthSlider'),
     widthValue: document.getElementById('widthValue'),
-    processBtn: document.getElementById('processBtn'),
+    previewBtn: document.getElementById('previewBtn'),
+    downloadBtn: document.getElementById('downloadBtn'),
     resetBtn: document.getElementById('resetBtn'),
-    previewContainer: document.getElementById('previewContainer'),
+    previewSection: document.getElementById('previewSection'),
+    originalPreview: document.getElementById('originalPreview'),
+    processedPreview: document.getElementById('processedPreview'),
+    originalInfo: document.getElementById('originalInfo'),
+    processedInfo: document.getElementById('processedInfo'),
     message: document.getElementById('message'),
     apiStatus: document.getElementById('apiStatus')
 };
@@ -53,7 +58,8 @@ function setupEventListeners() {
     elements.widthSlider.addEventListener('input', updateWidthValue);
 
     // Botones
-    elements.processBtn.addEventListener('click', processImages);
+    elements.previewBtn.addEventListener('click', generatePreview);
+    elements.downloadBtn.addEventListener('click', downloadImage);
     elements.resetBtn.addEventListener('click', resetApp);
 }
 
@@ -65,18 +71,7 @@ function setPlatform(platform) {
         btn.classList.toggle('active', btn.dataset.platform === platform);
     });
 
-    // Configuración por plataforma
-    const platformConfigs = {
-        kyte: { height: 75, width: 70 },
-        jumpseller: { height: 85, width: 85 }
-    };
-
-    const config = platformConfigs[platform] || platformConfigs.kyte;
-    elements.heightSlider.value = config.height;
-    elements.widthSlider.value = config.width;
-    updateSliders();
-
-    showMessage(`Plataforma cambiada a: ${platform.toUpperCase()}`, 'success');
+    showMessage(`Plataforma: ${platform.toUpperCase()}`, 'success');
 }
 
 // Sliders
@@ -117,86 +112,64 @@ function handleFileSelect(e) {
 function handleFiles(files) {
     if (files.length === 0) return;
 
-    // Validar cantidad
-    if (files.length > 6) {
-        showMessage('Máximo 6 imágenes permitidas', 'error');
+    // Solo una imagen
+    if (files.length > 1) {
+        showMessage('Solo se permite UNA imagen a la vez', 'error');
         return;
     }
 
-    // Validar tipos
-    const invalidFiles = Array.from(files).filter(file => 
-        !file.type.startsWith('image/')
-    );
+    const file = files[0];
 
-    if (invalidFiles.length > 0) {
+    // Validar tipo
+    if (!file.type.startsWith('image/')) {
         showMessage('Solo se permiten archivos de imagen', 'error');
         return;
     }
 
-    selectedFiles = Array.from(files);
-    updateFileCount();
-    showPreviews();
-    elements.processBtn.disabled = false;
+    currentFile = file;
+    updateFileInfo();
+    showOriginalPreview(file);
+    elements.previewBtn.disabled = false;
+    elements.downloadBtn.style.display = 'none';
+    elements.previewSection.style.display = 'none';
     
-    showMessage(`${files.length} imagen(es) seleccionada(s)`, 'success');
+    showMessage('Imagen cargada. Haz clic en "Ver Preview"', 'success');
 }
 
-function updateFileCount() {
-    elements.fileCount.textContent = `${selectedFiles.length} archivo(s) seleccionado(s)`;
+function updateFileInfo() {
+    elements.fileCount.textContent = currentFile ? currentFile.name : 'Ningún archivo seleccionado';
 }
 
-function showPreviews() {
-    elements.previewContainer.innerHTML = '';
-
-    selectedFiles.forEach((file, index) => {
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            const previewItem = document.createElement('div');
-            previewItem.className = 'preview-item';
-            
-            previewItem.innerHTML = `
-                <img src="${e.target.result}" alt="${file.name}" class="preview-image">
-                <div class="preview-info">
-                    <div>${file.name}</div>
-                    <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">
-                        ${(file.size / 1024 / 1024).toFixed(2)} MB
-                    </div>
-                </div>
-            `;
-            
-            elements.previewContainer.appendChild(previewItem);
-        };
-        
-        reader.readAsDataURL(file);
-    });
+function showOriginalPreview(file) {
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        elements.originalPreview.src = e.target.result;
+        elements.originalInfo.textContent = `${file.name} • ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+    };
+    
+    reader.readAsDataURL(file);
 }
 
-// Procesamiento de imágenes
-async function processImages() {
-    if (selectedFiles.length === 0) {
-        showMessage('No hay imágenes para procesar', 'error');
+// Preview
+async function generatePreview() {
+    if (!currentFile) {
+        showMessage('No hay imagen para procesar', 'error');
         return;
     }
 
-    setLoadingState(true);
+    setPreviewLoadingState(true);
     
     try {
         const formData = new FormData();
-        
-        // Agregar archivos
-        selectedFiles.forEach(file => {
-            formData.append('files', file);
-        });
-
-        // Agregar parámetros
+        formData.append('file', currentFile);
         formData.append('platform', currentPlatform);
         formData.append('height_percent', elements.heightSlider.value);
         formData.append('width_percent', elements.widthSlider.value);
 
-        showMessage('⏳ Procesando imágenes...', 'success');
+        showMessage('⏳ Generando preview...', 'success');
 
-        const response = await fetch(`${API_URL}/process`, {
+        const response = await fetch(`${API_URL}/preview`, {
             method: 'POST',
             body: formData
         });
@@ -205,40 +178,84 @@ async function processImages() {
             throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
 
-        // Descargar ZIP
+        const data = await response.json();
+
+        // Mostrar preview procesado
+        elements.processedPreview.src = data.processed;
+        elements.processedInfo.textContent = `${data.platform} • ${data.dimensions}`;
+
+        // Mostrar sección de preview
+        elements.previewSection.style.display = 'block';
+        elements.downloadBtn.style.display = 'inline-block';
+        elements.downloadBtn.disabled = false;
+
+        showMessage('✅ Preview generado. Revisa el resultado y descarga si te gusta.', 'success');
+
+    } catch (error) {
+        console.error('Error:', error);
+        showMessage(`❌ Error al generar preview: ${error.message}`, 'error');
+    } finally {
+        setPreviewLoadingState(false);
+    }
+}
+
+// Descarga
+async function downloadImage() {
+    if (!currentFile) {
+        showMessage('No hay imagen para descargar', 'error');
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('file', currentFile);
+        formData.append('platform', currentPlatform);
+        formData.append('height_percent', elements.heightSlider.value);
+        formData.append('width_percent', elements.widthSlider.value);
+
+        showMessage('⏳ Descargando imagen...', 'success');
+
+        const response = await fetch(`${API_URL}/download`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${currentPlatform}_imagenes_optimizadas.zip`;
+        a.download = `${currentPlatform}_optimizada.png`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
 
-        showMessage(`✅ ${selectedFiles.length} imagen(es) procesadas correctamente. ZIP descargado.`, 'success');
+        showMessage('✅ Imagen descargada correctamente', 'success');
 
     } catch (error) {
         console.error('Error:', error);
-        showMessage(`❌ Error al procesar imágenes: ${error.message}`, 'error');
-    } finally {
-        setLoadingState(false);
+        showMessage(`❌ Error al descargar: ${error.message}`, 'error');
     }
 }
 
-// Estado de carga
-function setLoadingState(loading) {
-    const btnText = elements.processBtn.querySelector('.btn-text');
-    const btnLoading = elements.processBtn.querySelector('.btn-loading');
+// Estados de carga
+function setPreviewLoadingState(loading) {
+    const btnText = elements.previewBtn.querySelector('.btn-text');
+    const btnLoading = elements.previewBtn.querySelector('.btn-loading');
     
     if (loading) {
         btnText.style.display = 'none';
         btnLoading.style.display = 'inline';
-        elements.processBtn.disabled = true;
+        elements.previewBtn.disabled = true;
+        elements.downloadBtn.disabled = true;
     } else {
         btnText.style.display = 'inline';
         btnLoading.style.display = 'none';
-        elements.processBtn.disabled = false;
+        elements.previewBtn.disabled = false;
     }
 }
 
@@ -248,7 +265,6 @@ function showMessage(text, type) {
     elements.message.className = `message ${type}`;
     elements.message.style.display = 'block';
 
-    // Auto-ocultar después de 5 segundos
     setTimeout(() => {
         elements.message.style.display = 'none';
     }, 5000);
@@ -256,13 +272,14 @@ function showMessage(text, type) {
 
 // Reiniciar
 function resetApp() {
-    selectedFiles = [];
+    currentFile = null;
     elements.fileInput.value = '';
-    elements.previewContainer.innerHTML = '';
-    elements.processBtn.disabled = true;
-    updateFileCount();
+    elements.previewSection.style.display = 'none';
+    elements.previewBtn.disabled = true;
+    elements.downloadBtn.style.display = 'none';
+    updateFileInfo();
     setPlatform('kyte');
-    showMessage('Aplicación reiniciada', 'success');
+    showMessage('Listo para nueva imagen', 'success');
 }
 
 // Verificar estado de la API
