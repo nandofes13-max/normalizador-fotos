@@ -19,35 +19,39 @@ app.add_middleware(
 # Crear directorio temporal
 os.makedirs("temp", exist_ok=True)
 
-def crop_and_resize_product(image, target_width, target_height):
+# TAMAÑOS ESTÁNDAR DEL PRODUCTO (después de recortar)
+PRODUCT_SIZES = {
+    "kyte": {"width": 840, "height": 750},    # 70% de 1200, 75% de 1000
+    "jumpseller": {"width": 720, "height": 720} # 90% de 800x800
+}
+
+def extract_product(image):
     """
-    Recorta el producto y lo escala para ocupar exactamente el espacio
+    Recorta el producto eliminando fondos/márgenes
     """
-    # Convertir a RGB si es necesario
     if image.mode != 'RGB':
         image = image.convert('RGB')
     
-    # 1. Encontrar los bordes del producto (eliminar fondos/márgenes)
-    bbox = image.getbbox()  # Encuentra el área no-blanca/transparente
+    # Encontrar área no-blanca del producto
+    bbox = image.getbbox()
     
     if bbox:
-        # 2. Recortar al producto
-        image = image.crop(bbox)
-    
-    # 3. Calcular escala para FORZAR el tamaño exacto
+        return image.crop(bbox)
+    return image
+
+def resize_to_standard(image, target_width, target_height):
+    """
+    Escala el producto a tamaño estándar manteniendo relación de aspecto
+    """
+    # Calcular escala manteniendo relación
     scale_x = target_width / image.width
     scale_y = target_height / image.height
-    
-    # Usar la escala que MÁS estire la imagen
-    scale = max(scale_x, scale_y)
+    scale = min(scale_x, scale_y)  # Usar escala más pequeña para que quepa
     
     new_width = int(image.width * scale)
     new_height = int(image.height * scale)
     
-    # 4. Redimensionar
-    resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-    
-    return resized_image
+    return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
 @app.get("/")
 async def root():
@@ -78,6 +82,7 @@ async def process_images(
         }
         
         config = platform_configs.get(platform, platform_configs["kyte"])
+        product_size = PRODUCT_SIZES.get(platform, PRODUCT_SIZES["kyte"])
         
         processed_files = []
         
@@ -86,31 +91,22 @@ async def process_images(
             image_data = await file.read()
             image = Image.open(io.BytesIO(image_data))
             
-            # Crear canvas según plataforma
+            # 🔥 PROCESO CORREGIDO:
+            # 1. RECORTAR producto
+            product = extract_product(image)
+            
+            # 2. ESCALAR a tamaño estándar
+            standardized_product = resize_to_standard(product, product_size["width"], product_size["height"])
+            
+            # 3. CREAR lienzo blanco
             canvas = Image.new("RGB", (config["width"], config["height"]), "white")
             
-            # Calcular tamaño del producto
-            product_width = int(config["width"] * (width_percent / 100))
-            product_height = int(config["height"] * (height_percent / 100))
+            # 4. CALCULAR posición para centrar
+            x = (config["width"] - standardized_product.width) // 2
+            y = (config["height"] - standardized_product.height) // 2
             
-            # 🔥 RECORTE Y ESCALADO RADICAL
-            image = crop_and_resize_product(image, product_width, product_height)
-            
-            # Calcular posición para centrar
-            x = (config["width"] - image.width) // 2
-            y = (config["height"] - image.height) // 2
-            
-            # Si la imagen es más grande que el canvas, recortar los bordes
-            if image.width > config["width"] or image.height > config["height"]:
-                left = (image.width - config["width"]) // 2
-                top = (image.height - config["height"]) // 2
-                right = left + config["width"]
-                bottom = top + config["height"]
-                image = image.crop((left, top, right, bottom))
-                x, y = 0, 0  # Ya no necesita centrado
-            
-            # Pegar imagen en el canvas
-            canvas.paste(image, (x, y))
+            # 5. PEGAR producto en lienzo
+            canvas.paste(standardized_product, (x, y))
             
             # Guardar imagen procesada
             output_filename = f"temp/{platform}_{file.filename.split('.')[0]}_{config['width']}x{config['height']}.png"
