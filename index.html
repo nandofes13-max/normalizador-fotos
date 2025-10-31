@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Normalizador de Fotos - Ecommerce</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🖼️ Normalizador de Fotos</h1>
+            <p class="subtitle">Optimiza tus imágenes para Kyte, Jumpseller y más</p>
+        </header>
+
+        <div class="platform-selector">
+            <h3>Selecciona tu plataforma:</h3>
+            <div class="platform-buttons">
+                <button class="platform-btn active" data-platform="kyte">
+                    <span class="platform-icon">🎯</span>
+                    <span class="platform-name">Kyte</span>
+                    <span class="platform-specs">1200×1000px</span>
+                </button>
+                <button class="platform-btn" data-platform="jumpseller">
+                    <span class="platform-icon">🛒</span>
+                    <span class="platform-name">Jumpseller</span>
+                    <span class="platform-specs">800×800px</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <p class="upload-text">Arrastra y suelta tus imágenes aquí o haz clic para seleccionar</p>
+            <p class="upload-limit">Máximo 6 imágenes • PNG, JPG, JPEG</p>
+            <input type="file" id="fileInput" accept="image/*" multiple>
+            <div class="file-count" id="fileCount">0 archivos seleccionados</div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="heightSlider">Altura del producto:</label>
+                <input type="range" id="heightSlider" min="50" max="90" value="75">
+                <span id="heightValue">75%</span>
+            </div>
+            <div class="control-group">
+                <label for="widthSlider">Ancho del producto:</label>
+                <input type="range" id="widthSlider" min="50" max="90" value="70">
+                <span id="widthValue">70%</span>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button id="processBtn" class="btn btn-primary" disabled>
+                <span class="btn-text">Procesar Imágenes</span>
+                <span class="btn-loading" style="display: none;">⏳ Procesando...</span>
+            </button>
+            <button id="resetBtn" class="btn btn-secondary">Reiniciar</button>
+        </div>
+
+        <div class="preview-container" id="previewContainer">
+            <!-- Las previsualizaciones aparecerán aquí -->
+        </div>
+
+        <div class="message" id="message"></div>
+
+        <footer>
+            <p>Conectado a: <code id="apiStatus">https://normalizador-fotos.onrender.com</code></p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
