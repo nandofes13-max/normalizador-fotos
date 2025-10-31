@@ -41,17 +41,10 @@ def extract_product(image):
 
 def resize_to_standard(image, target_width, target_height):
     """
-    Escala el producto a tamaño estándar manteniendo relación de aspecto
+    🔥 OPCIÓN 1: Escala EXACTAMENTE al tamaño estándar
+    (Distorsión mínima pero tamaño uniforme)
     """
-    # Calcular escala manteniendo relación
-    scale_x = target_width / image.width
-    scale_y = target_height / image.height
-    scale = min(scale_x, scale_y)  # Usar escala más pequeña para que quepa
-    
-    new_width = int(image.width * scale)
-    new_height = int(image.height * scale)
-    
-    return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    return image.resize((target_width, target_height), Image.Resampling.LANCZOS)
 
 @app.get("/")
 async def root():
@@ -91,21 +84,21 @@ async def process_images(
             image_data = await file.read()
             image = Image.open(io.BytesIO(image_data))
             
-            # 🔥 PROCESO CORREGIDO:
-            # 1. RECORTAR producto
+            # 🔥 PROCESO CORREGIDO - 3 PASOS CLAROS:
+            # 1. RECORTAR producto (eliminar márgenes)
             product = extract_product(image)
             
-            # 2. ESCALAR a tamaño estándar
+            # 2. ESCALAR a tamaño EXACTO estándar
             standardized_product = resize_to_standard(product, product_size["width"], product_size["height"])
             
-            # 3. CREAR lienzo blanco
+            # 3. CREAR lienzo blanco y PEGAR producto
             canvas = Image.new("RGB", (config["width"], config["height"]), "white")
             
-            # 4. CALCULAR posición para centrar
+            # Calcular posición para centrar
             x = (config["width"] - standardized_product.width) // 2
             y = (config["height"] - standardized_product.height) // 2
             
-            # 5. PEGAR producto en lienzo
+            # Pegar producto en lienzo
             canvas.paste(standardized_product, (x, y))
             
             # Guardar imagen procesada
