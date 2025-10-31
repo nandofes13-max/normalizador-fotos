@@ -19,32 +19,34 @@ app.add_middleware(
 # Crear directorio temporal
 os.makedirs("temp", exist_ok=True)
 
-# TAMAÑOS ESTÁNDAR DEL PRODUCTO (después de recortar)
+# TAMAÑOS MÁXIMOS AGRESIVOS - forzar que ocupe casi todo el espacio
 PRODUCT_SIZES = {
-    "kyte": {"width": 840, "height": 750},    # 70% de 1200, 75% de 1000
-    "jumpseller": {"width": 720, "height": 720} # 90% de 800x800
+    "kyte": {"width": 1000, "height": 900},    # 83% de 1200, 90% de 1000
+    "jumpseller": {"width": 750, "height": 750} # 94% de 800x800
 }
 
-def extract_product(image):
+def aggressive_resize(image, target_width, target_height):
     """
-    Recorta el producto eliminando fondos/márgenes
+    Escalado AGRESIVO - fuerza a ocupar el máximo espacio posible
     """
-    if image.mode != 'RGB':
-        image = image.convert('RGB')
+    # Calcular escalas
+    scale_x = target_width / image.width
+    scale_y = target_height / image.height
     
-    # Encontrar área no-blanca del producto
-    bbox = image.getbbox()
+    # Usar la escala MÁS GRANDE + 5% extra para forzar tamaño
+    scale = max(scale_x, scale_y) * 1.05
     
-    if bbox:
-        return image.crop(bbox)
-    return image
-
-def resize_to_standard(image, target_width, target_height):
-    """
-    🔥 OPCIÓN 1: Escala EXACTAMENTE al tamaño estándar
-    (Distorsión mínima pero tamaño uniforme)
-    """
-    return image.resize((target_width, target_height), Image.Resampling.LANCZOS)
+    new_width = int(image.width * scale)
+    new_height = int(image.height * scale)
+    
+    # Redimensionar
+    resized = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    
+    # Si después del escalado sigue siendo muy pequeño, forzar más
+    if resized.width < target_width * 0.9 or resized.height < target_height * 0.9:
+        return image.resize((target_width, target_height), Image.Resampling.LANCZOS)
+    
+    return resized
 
 @app.get("/")
 async def root():
@@ -58,8 +60,8 @@ async def health_check():
 async def process_images(
     files: list[UploadFile] = File(...),
     platform: str = "kyte",
-    height_percent: int = 75,
-    width_percent: int = 70
+    height_percent: int = 85,  # Valores más altos por defecto
+    width_percent: int = 80    # Valores más altos por defecto
 ):
     """
     Procesa imágenes para diferentes plataformas de ecommerce
@@ -75,7 +77,10 @@ async def process_images(
         }
         
         config = platform_configs.get(platform, platform_configs["kyte"])
-        product_size = PRODUCT_SIZES.get(platform, PRODUCT_SIZES["kyte"])
+        
+        # Calcular tamaño dinámicamente basado en los porcentajes
+        product_width = int(config["width"] * (width_percent / 100))
+        product_height = int(config["height"] * (height_percent / 100))
         
         processed_files = []
         
@@ -84,22 +89,27 @@ async def process_images(
             image_data = await file.read()
             image = Image.open(io.BytesIO(image_data))
             
-            # 🔥 PROCESO CORREGIDO - 3 PASOS CLAROS:
-            # 1. RECORTAR producto (eliminar márgenes)
-            product = extract_product(image)
+            # 🔥 ESCALADO AGRESIVO
+            resized_product = aggressive_resize(image, product_width, product_height)
             
-            # 2. ESCALAR a tamaño EXACTO estándar
-            standardized_product = resize_to_standard(product, product_size["width"], product_size["height"])
-            
-            # 3. CREAR lienzo blanco y PEGAR producto
+            # CREAR lienzo blanco
             canvas = Image.new("RGB", (config["width"], config["height"]), "white")
             
-            # Calcular posición para centrar
-            x = (config["width"] - standardized_product.width) // 2
-            y = (config["height"] - standardized_product.height) // 2
+            # CALCULAR posición para centrar
+            x = (config["width"] - resized_product.width) // 2
+            y = (config["height"] - resized_product.height) // 2
             
-            # Pegar producto en lienzo
-            canvas.paste(standardized_product, (x, y))
+            # Si la imagen es más grande que el espacio disponible, recortar
+            if resized_product.width > config["width"] or resized_product.height > config["height"]:
+                left = max(0, (resized_product.width - config["width"]) // 2)
+                top = max(0, (resized_product.height - config["height"]) // 2)
+                right = min(resized_product.width, left + config["width"])
+                bottom = min(resized_product.height, top + config["height"])
+                resized_product = resized_product.crop((left, top, right, bottom))
+                x, y = 0, 0  # Centrado automático después del crop
+            
+            # PEGAR producto en lienzo
+            canvas.paste(resized_product, (x, y))
             
             # Guardar imagen procesada
             output_filename = f"temp/{platform}_{file.filename.split('.')[0]}_{config['width']}x{config['height']}.png"
