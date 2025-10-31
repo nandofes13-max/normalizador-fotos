@@ -71,6 +71,17 @@ function setPlatform(platform) {
         btn.classList.toggle('active', btn.dataset.platform === platform);
     });
 
+    // Configuración por plataforma
+    const platformConfigs = {
+        kyte: { height: 75, width: 70 },
+        jumpseller: { height: 85, width: 85 }
+    };
+
+    const config = platformConfigs[platform] || platformConfigs.kyte;
+    elements.heightSlider.value = config.height;
+    elements.widthSlider.value = config.width;
+    updateSliders();
+
     showMessage(`Plataforma: ${platform.toUpperCase()}`, 'success');
 }
 
@@ -182,7 +193,14 @@ async function generatePreview() {
 
         // Mostrar preview procesado
         elements.processedPreview.src = data.processed;
-        elements.processedInfo.textContent = `${data.platform} • ${data.dimensions}`;
+        
+        // 🔥 CORRECCIÓN: Usar currentPlatform en lugar de data.platform
+        const platformDimensions = {
+            kyte: '1200×1000px',
+            jumpseller: '800×800px'
+        };
+        
+        elements.processedInfo.textContent = `${currentPlatform} • ${platformDimensions[currentPlatform] || data.dimensions}`;
 
         // Mostrar sección de preview
         elements.previewSection.style.display = 'block';
