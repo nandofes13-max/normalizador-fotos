@@ -1,10 +1,11 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import zipfile
 from PIL import Image
 import io
+import base64
 
 app = FastAPI(title="Normalizador Fotos Ecommerce", version="1.0.0")
 
@@ -27,20 +28,17 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
-@app.post("/process")
-async def process_images(
-    files: list[UploadFile] = File(...),
+@app.post("/preview")
+async def preview_image(
+    file: UploadFile = File(...),
     platform: str = "kyte",
     height_percent: int = 75,
     width_percent: int = 70
 ):
     """
-    Procesa imágenes para diferentes plataformas de ecommerce
+    Devuelve preview de antes/después sin guardar archivo
     """
     try:
-        if len(files) < 1 or len(files) > 6:
-            raise HTTPException(400, "Debes subir entre 1 y 6 imágenes")
-        
         # Configuración por plataforma
         platform_configs = {
             "kyte": {"width": 1200, "height": 1000},
@@ -49,49 +47,99 @@ async def process_images(
         
         config = platform_configs.get(platform, platform_configs["kyte"])
         
-        processed_files = []
+        # Leer imagen original
+        image_data = await file.read()
+        image = Image.open(io.BytesIO(image_data))
         
-        for file in files:
-            # Leer imagen
-            image_data = await file.read()
-            image = Image.open(io.BytesIO(image_data))
-            
-            # Crear canvas según plataforma
-            canvas = Image.new("RGB", (config["width"], config["height"]), "white")
-            
-            # Calcular tamaño del producto
-            target_height = config["height"] * height_percent / 100
-            target_width = config["width"] * width_percent / 100
-            
-            # Escalado SIMPLE - mantener relación de aspecto
-            image.thumbnail((target_width, target_height), Image.Resampling.LANCZOS)
-            
-            # Calcular posición para centrar
-            x = (config["width"] - image.width) / 2
-            y = (config["height"] - image.height) / 2
-            
-            # Pegar imagen en el canvas
-            canvas.paste(image, (int(x), int(y)))
-            
-            # Guardar imagen procesada
-            output_filename = f"temp/{platform}_{file.filename.split('.')[0]}_{config['width']}x{config['height']}.png"
-            canvas.save(output_filename, "PNG")
-            processed_files.append(output_filename)
+        # Crear canvas para imagen procesada
+        canvas = Image.new("RGB", (config["width"], config["height"]), "white")
         
-        # Crear ZIP
-        zip_filename = f"temp/{platform}_imagenes.zip"
-        with zipfile.ZipFile(zip_filename, 'w') as zipf:
-            for file in processed_files:
-                zipf.write(file, os.path.basename(file))
+        # Calcular tamaño del producto
+        target_height = config["height"] * height_percent / 100
+        target_width = config["width"] * width_percent / 100
+        
+        # Escalado SIMPLE
+        image.thumbnail((target_width, target_height), Image.Resampling.LANCZOS)
+        
+        # Calcular posición para centrar
+        x = (config["width"] - image.width) / 2
+        y = (config["height"] - image.height) / 2
+        
+        # Pegar imagen en el canvas
+        canvas.paste(image, (int(x), int(y)))
+        
+        # Convertir a base64 para el frontend
+        buffered = io.BytesIO()
+        canvas.save(buffered, format="PNG")
+        processed_base64 = base64.b64encode(buffered.getvalue()).decode()
+        
+        # También convertir original a base64
+        buffered_original = io.BytesIO()
+        Image.open(io.BytesIO(image_data)).save(buffered_original, format="PNG")
+        original_base64 = base64.b64encode(buffered_original.getvalue()).decode()
+        
+        return JSONResponse({
+            "original": f"data:image/png;base64,{original_base64}",
+            "processed": f"data:image/png;base64,{processed_base64}",
+            "platform": platform,
+            "dimensions": f"{config['width']}x{config['height']}px"
+        })
+        
+    except Exception as e:
+        raise HTTPException(500, f"Error procesando imagen: {str(e)}")
+
+@app.post("/download")
+async def download_image(
+    file: UploadFile = File(...),
+    platform: str = "kyte", 
+    height_percent: int = 75,
+    width_percent: int = 70
+):
+    """
+    Descarga la imagen procesada
+    """
+    try:
+        # Configuración por plataforma
+        platform_configs = {
+            "kyte": {"width": 1200, "height": 1000},
+            "jumpseller": {"width": 800, "height": 800}
+        }
+        
+        config = platform_configs.get(platform, platform_configs["kyte"])
+        
+        # Leer imagen
+        image_data = await file.read()
+        image = Image.open(io.BytesIO(image_data))
+        
+        # Crear canvas
+        canvas = Image.new("RGB", (config["width"], config["height"]), "white")
+        
+        # Calcular tamaño del producto
+        target_height = config["height"] * height_percent / 100
+        target_width = config["width"] * width_percent / 100
+        
+        # Escalado
+        image.thumbnail((target_width, target_height), Image.Resampling.LANCZOS)
+        
+        # Calcular posición para centrar
+        x = (config["width"] - image.width) / 2
+        y = (config["height"] - image.height) / 2
+        
+        # Pegar imagen en el canvas
+        canvas.paste(image, (int(x), int(y)))
+        
+        # Guardar imagen procesada
+        output_filename = f"temp/{platform}_{file.filename.split('.')[0]}_{config['width']}x{config['height']}.png"
+        canvas.save(output_filename, "PNG")
         
         return FileResponse(
-            zip_filename,
-            media_type='application/zip',
-            filename=f"{platform}_imagenes_optimizadas.zip"
+            output_filename,
+            media_type='image/png',
+            filename=f"{platform}_optimizada.png"
         )
         
     except Exception as e:
-        raise HTTPException(500, f"Error procesando imágenes: {str(e)}")
+        raise HTTPException(500, f"Error procesando imagen: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
