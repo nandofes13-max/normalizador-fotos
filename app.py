@@ -20,6 +20,12 @@ app.add_middleware(
 # Crear directorio temporal
 os.makedirs("temp", exist_ok=True)
 
+# Configuración por plataforma
+PLATFORM_CONFIGS = {
+    "kyte": {"width": 1200, "height": 1000},
+    "jumpseller": {"width": 800, "height": 800}
+}
+
 @app.get("/")
 async def root():
     return {"message": "Normalizador de Fotos para Ecommerce", "status": "active"}
@@ -39,13 +45,12 @@ async def preview_image(
     Devuelve preview de antes/después sin guardar archivo
     """
     try:
-        # Configuración por plataforma
-        platform_configs = {
-            "kyte": {"width": 1200, "height": 1000},
-            "jumpseller": {"width": 800, "height": 800}
-        }
+        # 🔥 CORRECCIÓN: Usar la plataforma correcta
+        config = PLATFORM_CONFIGS.get(platform)
+        if not config:
+            config = PLATFORM_CONFIGS["kyte"]  # Fallback seguro
         
-        config = platform_configs.get(platform, platform_configs["kyte"])
+        print(f"📱 Procesando para plataforma: {platform} - {config['width']}x{config['height']}px")
         
         # Leer imagen original
         image_data = await file.read()
@@ -55,15 +60,17 @@ async def preview_image(
         canvas = Image.new("RGB", (config["width"], config["height"]), "white")
         
         # Calcular tamaño del producto
-        target_height = config["height"] * height_percent / 100
-        target_width = config["width"] * width_percent / 100
+        target_height = int(config["height"] * height_percent / 100)
+        target_width = int(config["width"] * width_percent / 100)
+        
+        print(f"🎯 Tamaño producto: {target_width}x{target_height}px")
         
         # Escalado SIMPLE
         image.thumbnail((target_width, target_height), Image.Resampling.LANCZOS)
         
         # Calcular posición para centrar
-        x = (config["width"] - image.width) / 2
-        y = (config["height"] - image.height) / 2
+        x = (config["width"] - image.width) // 2
+        y = (config["height"] - image.height) // 2
         
         # Pegar imagen en el canvas
         canvas.paste(image, (int(x), int(y)))
@@ -86,6 +93,7 @@ async def preview_image(
         })
         
     except Exception as e:
+        print(f"❌ Error en preview: {str(e)}")
         raise HTTPException(500, f"Error procesando imagen: {str(e)}")
 
 @app.post("/download")
@@ -99,13 +107,12 @@ async def download_image(
     Descarga la imagen procesada
     """
     try:
-        # Configuración por plataforma
-        platform_configs = {
-            "kyte": {"width": 1200, "height": 1000},
-            "jumpseller": {"width": 800, "height": 800}
-        }
-        
-        config = platform_configs.get(platform, platform_configs["kyte"])
+        # 🔥 CORRECCIÓN: Usar la plataforma correcta
+        config = PLATFORM_CONFIGS.get(platform)
+        if not config:
+            config = PLATFORM_CONFIGS["kyte"]  # Fallback seguro
+            
+        print(f"📥 Descargando para plataforma: {platform} - {config['width']}x{config['height']}px")
         
         # Leer imagen
         image_data = await file.read()
@@ -115,15 +122,15 @@ async def download_image(
         canvas = Image.new("RGB", (config["width"], config["height"]), "white")
         
         # Calcular tamaño del producto
-        target_height = config["height"] * height_percent / 100
-        target_width = config["width"] * width_percent / 100
+        target_height = int(config["height"] * height_percent / 100)
+        target_width = int(config["width"] * width_percent / 100)
         
         # Escalado
         image.thumbnail((target_width, target_height), Image.Resampling.LANCZOS)
         
         # Calcular posición para centrar
-        x = (config["width"] - image.width) / 2
-        y = (config["height"] - image.height) / 2
+        x = (config["width"] - image.width) // 2
+        y = (config["height"] - image.height) // 2
         
         # Pegar imagen en el canvas
         canvas.paste(image, (int(x), int(y)))
@@ -139,6 +146,7 @@ async def download_image(
         )
         
     except Exception as e:
+        print(f"❌ Error en download: {str(e)}")
         raise HTTPException(500, f"Error procesando imagen: {str(e)}")
 
 if __name__ == "__main__":
