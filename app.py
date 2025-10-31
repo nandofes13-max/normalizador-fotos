@@ -34,6 +34,14 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
+# 🔥 TEMPORAL: Endpoint para debug
+@app.get("/debug-platforms")
+async def debug_platforms():
+    return {
+        "platforms": PLATFORM_CONFIGS,
+        "current_config": PLATFORM_CONFIGS
+    }
+
 @app.post("/preview")
 async def preview_image(
     file: UploadFile = File(...),
@@ -45,16 +53,24 @@ async def preview_image(
     Devuelve preview de antes/después sin guardar archivo
     """
     try:
-        # 🔥 CORRECCIÓN: Usar la plataforma correcta
+        # 🔥 DEBUG: Ver qué está llegando
+        print(f"🎯 PLATFORM RECIBIDA: '{platform}'")
+        print(f"🎯 CONFIGURACIONES DISPONIBLES: {list(PLATFORM_CONFIGS.keys())}")
+        print(f"🎯 PORCENTAJES: {width_percent}% ancho, {height_percent}% alto")
+        
+        # CORRECCIÓN: Usar la plataforma correcta
         config = PLATFORM_CONFIGS.get(platform)
         if not config:
-            config = PLATFORM_CONFIGS["kyte"]  # Fallback seguro
+            print(f"❌ PLATFORM NO ENCONTRADA, USANDO KYTE COMO FALLBACK")
+            config = PLATFORM_CONFIGS["kyte"]
         
-        print(f"📱 Procesando para plataforma: {platform} - {config['width']}x{config['height']}px")
+        print(f"✅ CONFIGURACIÓN FINAL: {config}")
         
         # Leer imagen original
         image_data = await file.read()
         image = Image.open(io.BytesIO(image_data))
+        
+        print(f"📷 IMAGEN ORIGINAL: {image.width}x{image.height}px")
         
         # Crear canvas para imagen procesada
         canvas = Image.new("RGB", (config["width"], config["height"]), "white")
@@ -63,14 +79,19 @@ async def preview_image(
         target_height = int(config["height"] * height_percent / 100)
         target_width = int(config["width"] * width_percent / 100)
         
-        print(f"🎯 Tamaño producto: {target_width}x{target_height}px")
+        print(f"🎯 TAMAÑO PRODUCTO: {target_width}x{target_height}px")
+        print(f"🎯 LIENZO FINAL: {config['width']}x{config['height']}px")
         
         # Escalado SIMPLE
         image.thumbnail((target_width, target_height), Image.Resampling.LANCZOS)
         
+        print(f"📐 IMAGEN REDIMENSIONADA: {image.width}x{image.height}px")
+        
         # Calcular posición para centrar
         x = (config["width"] - image.width) // 2
         y = (config["height"] - image.height) // 2
+        
+        print(f"📍 POSICIÓN CENTRADA: x={x}, y={y}")
         
         # Pegar imagen en el canvas
         canvas.paste(image, (int(x), int(y)))
@@ -85,6 +106,8 @@ async def preview_image(
         Image.open(io.BytesIO(image_data)).save(buffered_original, format="PNG")
         original_base64 = base64.b64encode(buffered_original.getvalue()).decode()
         
+        print(f"✅ PREVIEW GENERADO EXITOSAMENTE para {platform}")
+        
         return JSONResponse({
             "original": f"data:image/png;base64,{original_base64}",
             "processed": f"data:image/png;base64,{processed_base64}",
@@ -93,7 +116,7 @@ async def preview_image(
         })
         
     except Exception as e:
-        print(f"❌ Error en preview: {str(e)}")
+        print(f"❌ ERROR en preview: {str(e)}")
         raise HTTPException(500, f"Error procesando imagen: {str(e)}")
 
 @app.post("/download")
@@ -107,12 +130,16 @@ async def download_image(
     Descarga la imagen procesada
     """
     try:
-        # 🔥 CORRECCIÓN: Usar la plataforma correcta
+        # 🔥 DEBUG: Ver qué está llegando
+        print(f"📥 PLATFORM RECIBIDA (DOWNLOAD): '{platform}'")
+        
+        # CORRECCIÓN: Usar la plataforma correcta
         config = PLATFORM_CONFIGS.get(platform)
         if not config:
-            config = PLATFORM_CONFIGS["kyte"]  # Fallback seguro
+            print(f"❌ PLATFORM NO ENCONTRADA (DOWNLOAD), USANDO KYTE")
+            config = PLATFORM_CONFIGS["kyte"]
             
-        print(f"📥 Descargando para plataforma: {platform} - {config['width']}x{config['height']}px")
+        print(f"📥 DESCARGANDO para plataforma: {platform} - {config['width']}x{config['height']}px")
         
         # Leer imagen
         image_data = await file.read()
@@ -139,6 +166,8 @@ async def download_image(
         output_filename = f"temp/{platform}_{file.filename.split('.')[0]}_{config['width']}x{config['height']}.png"
         canvas.save(output_filename, "PNG")
         
+        print(f"✅ DESCARGA EXITOSA para {platform}: {output_filename}")
+        
         return FileResponse(
             output_filename,
             media_type='image/png',
@@ -146,7 +175,7 @@ async def download_image(
         )
         
     except Exception as e:
-        print(f"❌ Error en download: {str(e)}")
+        print(f"❌ ERROR en download: {str(e)}")
         raise HTTPException(500, f"Error procesando imagen: {str(e)}")
 
 if __name__ == "__main__":
