@@ -19,35 +19,6 @@ app.add_middleware(
 # Crear directorio temporal
 os.makedirs("temp", exist_ok=True)
 
-# TAMAÑOS MÁXIMOS AGRESIVOS - forzar que ocupe casi todo el espacio
-PRODUCT_SIZES = {
-    "kyte": {"width": 1000, "height": 900},    # 83% de 1200, 90% de 1000
-    "jumpseller": {"width": 750, "height": 750} # 94% de 800x800
-}
-
-def aggressive_resize(image, target_width, target_height):
-    """
-    Escalado AGRESIVO - fuerza a ocupar el máximo espacio posible
-    """
-    # Calcular escalas
-    scale_x = target_width / image.width
-    scale_y = target_height / image.height
-    
-    # Usar la escala MÁS GRANDE + 5% extra para forzar tamaño
-    scale = max(scale_x, scale_y) * 1.05
-    
-    new_width = int(image.width * scale)
-    new_height = int(image.height * scale)
-    
-    # Redimensionar
-    resized = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-    
-    # Si después del escalado sigue siendo muy pequeño, forzar más
-    if resized.width < target_width * 0.9 or resized.height < target_height * 0.9:
-        return image.resize((target_width, target_height), Image.Resampling.LANCZOS)
-    
-    return resized
-
 @app.get("/")
 async def root():
     return {"message": "Normalizador de Fotos para Ecommerce", "status": "active"}
@@ -60,8 +31,8 @@ async def health_check():
 async def process_images(
     files: list[UploadFile] = File(...),
     platform: str = "kyte",
-    height_percent: int = 85,  # Valores más altos por defecto
-    width_percent: int = 80    # Valores más altos por defecto
+    height_percent: int = 75,
+    width_percent: int = 70
 ):
     """
     Procesa imágenes para diferentes plataformas de ecommerce
@@ -78,10 +49,6 @@ async def process_images(
         
         config = platform_configs.get(platform, platform_configs["kyte"])
         
-        # Calcular tamaño dinámicamente basado en los porcentajes
-        product_width = int(config["width"] * (width_percent / 100))
-        product_height = int(config["height"] * (height_percent / 100))
-        
         processed_files = []
         
         for file in files:
@@ -89,27 +56,22 @@ async def process_images(
             image_data = await file.read()
             image = Image.open(io.BytesIO(image_data))
             
-            # 🔥 ESCALADO AGRESIVO
-            resized_product = aggressive_resize(image, product_width, product_height)
-            
-            # CREAR lienzo blanco
+            # Crear canvas según plataforma
             canvas = Image.new("RGB", (config["width"], config["height"]), "white")
             
-            # CALCULAR posición para centrar
-            x = (config["width"] - resized_product.width) // 2
-            y = (config["height"] - resized_product.height) // 2
+            # Calcular tamaño del producto
+            target_height = config["height"] * height_percent / 100
+            target_width = config["width"] * width_percent / 100
             
-            # Si la imagen es más grande que el espacio disponible, recortar
-            if resized_product.width > config["width"] or resized_product.height > config["height"]:
-                left = max(0, (resized_product.width - config["width"]) // 2)
-                top = max(0, (resized_product.height - config["height"]) // 2)
-                right = min(resized_product.width, left + config["width"])
-                bottom = min(resized_product.height, top + config["height"])
-                resized_product = resized_product.crop((left, top, right, bottom))
-                x, y = 0, 0  # Centrado automático después del crop
+            # Escalado SIMPLE - mantener relación de aspecto
+            image.thumbnail((target_width, target_height), Image.Resampling.LANCZOS)
             
-            # PEGAR producto en lienzo
-            canvas.paste(resized_product, (x, y))
+            # Calcular posición para centrar
+            x = (config["width"] - image.width) / 2
+            y = (config["height"] - image.height) / 2
+            
+            # Pegar imagen en el canvas
+            canvas.paste(image, (int(x), int(y)))
             
             # Guardar imagen procesada
             output_filename = f"temp/{platform}_{file.filename.split('.')[0]}_{config['width']}x{config['height']}.png"
