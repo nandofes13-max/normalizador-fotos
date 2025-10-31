@@ -19,23 +19,34 @@ app.add_middleware(
 # Crear directorio temporal
 os.makedirs("temp", exist_ok=True)
 
-def resize_image_to_fit(image, target_width, target_height):
+def crop_and_resize_product(image, target_width, target_height):
     """
-    Redimensiona imagen manteniendo relación de aspecto
-    pero forzando a ocupar el espacio máximo
+    Recorta el producto y lo escala para ocupar exactamente el espacio
     """
-    # Calcular escalas
+    # Convertir a RGB si es necesario
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+    
+    # 1. Encontrar los bordes del producto (eliminar fondos/márgenes)
+    bbox = image.getbbox()  # Encuentra el área no-blanca/transparente
+    
+    if bbox:
+        # 2. Recortar al producto
+        image = image.crop(bbox)
+    
+    # 3. Calcular escala para FORZAR el tamaño exacto
     scale_x = target_width / image.width
     scale_y = target_height / image.height
     
-    # Usar la escala MÁS GRANDE para llenar el espacio
+    # Usar la escala que MÁS estire la imagen
     scale = max(scale_x, scale_y)
     
     new_width = int(image.width * scale)
     new_height = int(image.height * scale)
     
-    # Redimensionar
+    # 4. Redimensionar
     resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    
     return resized_image
 
 @app.get("/")
@@ -82,12 +93,21 @@ async def process_images(
             product_width = int(config["width"] * (width_percent / 100))
             product_height = int(config["height"] * (height_percent / 100))
             
-            # 🔥 ESCALADO INTELIGENTE - Mantiene relación pero llena espacio
-            image = resize_image_to_fit(image, product_width, product_height)
+            # 🔥 RECORTE Y ESCALADO RADICAL
+            image = crop_and_resize_product(image, product_width, product_height)
             
             # Calcular posición para centrar
             x = (config["width"] - image.width) // 2
             y = (config["height"] - image.height) // 2
+            
+            # Si la imagen es más grande que el canvas, recortar los bordes
+            if image.width > config["width"] or image.height > config["height"]:
+                left = (image.width - config["width"]) // 2
+                top = (image.height - config["height"]) // 2
+                right = left + config["width"]
+                bottom = top + config["height"]
+                image = image.crop((left, top, right, bottom))
+                x, y = 0, 0  # Ya no necesita centrado
             
             # Pegar imagen en el canvas
             canvas.paste(image, (x, y))
