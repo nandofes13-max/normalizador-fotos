@@ -19,6 +19,25 @@ app.add_middleware(
 # Crear directorio temporal
 os.makedirs("temp", exist_ok=True)
 
+def resize_image_to_fit(image, target_width, target_height):
+    """
+    Redimensiona imagen manteniendo relación de aspecto
+    pero forzando a ocupar el espacio máximo
+    """
+    # Calcular escalas
+    scale_x = target_width / image.width
+    scale_y = target_height / image.height
+    
+    # Usar la escala MÁS GRANDE para llenar el espacio
+    scale = max(scale_x, scale_y)
+    
+    new_width = int(image.width * scale)
+    new_height = int(image.height * scale)
+    
+    # Redimensionar
+    resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    return resized_image
+
 @app.get("/")
 async def root():
     return {"message": "Normalizador de Fotos para Ecommerce", "status": "active"}
@@ -59,12 +78,12 @@ async def process_images(
             # Crear canvas según plataforma
             canvas = Image.new("RGB", (config["width"], config["height"]), "white")
             
-            # Calcular tamaño del producto (MODO FORZADO)
+            # Calcular tamaño del producto
             product_width = int(config["width"] * (width_percent / 100))
             product_height = int(config["height"] * (height_percent / 100))
             
-            # 🔥 CAMBIO CLAVE: Redimensionar FORZANDO el tamaño
-            image = image.resize((product_width, product_height), Image.Resampling.LANCZOS)
+            # 🔥 ESCALADO INTELIGENTE - Mantiene relación pero llena espacio
+            image = resize_image_to_fit(image, product_width, product_height)
             
             # Calcular posición para centrar
             x = (config["width"] - image.width) // 2
