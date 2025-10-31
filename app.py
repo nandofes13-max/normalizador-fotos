@@ -59,12 +59,12 @@ async def process_images(
             # Crear canvas según plataforma
             canvas = Image.new("RGB", (config["width"], config["height"]), "white")
             
-            # Calcular tamaño del producto
+            # Calcular tamaño del producto (MODO FORZADO)
             product_width = int(config["width"] * (width_percent / 100))
             product_height = int(config["height"] * (height_percent / 100))
             
-            # Redimensionar imagen manteniendo relación de aspecto
-            image.thumbnail((product_width, product_height), Image.Resampling.LANCZOS)
+            # 🔥 CAMBIO CLAVE: Redimensionar FORZANDO el tamaño
+            image = image.resize((product_width, product_height), Image.Resampling.LANCZOS)
             
             # Calcular posición para centrar
             x = (config["width"] - image.width) // 2
