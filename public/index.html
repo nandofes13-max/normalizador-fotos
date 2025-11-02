@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Normalizador de Fotos</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f7f7;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      color: #333;
+    }
+    .container {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .preview {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      width: 400px;
+      text-align: center;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+    .btn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #0056b3;
+    }
+    input[type="file"] {
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🖼️ Normalizador de Fotos</h1>
+  <input type="file" id="imageInput" accept="image/*" />
+  <button class="btn" id="processBtn">Procesar Imagen</button>
+
+  <div class="container">
+    <div class="preview">
+      <h3>Original</h3>
+      <img id="original" src="" alt="Original" />
+    </div>
+    <div class="preview">
+      <h3>Procesada</h3>
+      <img id="processed" src="" alt="Procesada" />
+      <a id="downloadLink" class="btn" style="display:none;" download="procesada.png">Descargar</a>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById("imageInput");
+    const originalImg = document.getElementById("original");
+    const processedImg = document.getElementById("processed");
+    const processBtn = document.getElementById("processBtn");
+    const downloadLink = document.getElementById("downloadLink");
+
+    let imageBase64 = "";
+
+    input.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          imageBase64 = event.target.result;
+          originalImg.src = imageBase64;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    processBtn.addEventListener("click", async () => {
+      if (!imageBase64) return alert("Por favor, seleccioná una imagen primero.");
+
+      processedImg.src = "";
+      processedImg.alt = "Procesando...";
+      downloadLink.style.display = "none";
+
+      const res = await fetch("/api/procesar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64 })
+      });
+
+      const data = await res.json();
+      if (data.image) {
+        processedImg.src = data.image;
+        processedImg.alt = "Procesada";
+        downloadLink.href = data.image;
+        downloadLink.style.display = "inline-block";
+      } else {
+        alert("Error procesando la imagen");
+      }
+    });
+  </script>
+</body>
+</html>
