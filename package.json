@@ -1,6 +1,7 @@
 {
   "name": "normalizador-fotos",
   "version": "1.0.0",
+  "type": "module",
   "description": "Aplicación simple para normalizar imágenes de productos con fondo blanco y tamaño estándar.",
   "main": "server.js",
   "scripts": {
