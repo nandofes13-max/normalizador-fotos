@@ -4,24 +4,57 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Normalizador de Fotos</title>
-  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { font-family: Arial; text-align: center; margin-top: 40px; }
+    #preview { max-width: 400px; margin: 20px auto; display: block; border: 1px solid #ccc; }
+    input[type="file"] { margin: 20px; }
+    #sizeControl { width: 300px; }
+    button { padding: 10px 20px; cursor: pointer; }
+  </style>
 </head>
 <body>
   <h1>🖼️ Normalizador de Fotos</h1>
-  <form id="uploadForm">
-    <input type="file" id="imageInput" name="image" accept="image/*" required />
-    <button type="submit">Procesar Imagen</button>
-  </form>
+  <input type="file" id="fileInput" accept="image/*" />
+  <br />
+  <button onclick="uploadImage()">Procesar Imagen</button>
+  <br />
+  <img id="preview" src="" alt="Vista previa" />
+  <br />
+  <input type="range" id="sizeControl" min="50" max="150" value="100" />
+  <p>Ajustar tamaño: <span id="sizeLabel">100%</span></p>
+  <script>
+    const fileInput = document.getElementById("fileInput");
+    const preview = document.getElementById("preview");
+    const sizeControl = document.getElementById("sizeControl");
+    const sizeLabel = document.getElementById("sizeLabel");
 
-  <div id="preview-container" class="hidden">
-    <canvas id="canvas" width="800" height="800"></canvas>
-    <div class="controls">
-      <label for="zoom">Tamaño del producto:</label>
-      <input type="range" id="zoom" min="50" max="150" value="100">
-      <button id="download">Descargar Imagen</button>
-    </div>
-  </div>
+    sizeControl.addEventListener("input", () => {
+      const scale = sizeControl.value;
+      preview.style.width = scale + "%";
+      sizeLabel.textContent = scale + "%";
+    });
 
-  <script src="script.js"></script>
+    async function uploadImage() {
+      const file = fileInput.files[0];
+      if (!file) return alert("Selecciona una imagen primero");
+
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const response = await fetch("/process", {
+        method: "POST",
+        body: formData
+      });
+
+      if (!response.ok) {
+        alert("Error procesando la imagen");
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      preview.src = url;
+    }
+  </script>
 </body>
 </html>
