@@ -60,10 +60,13 @@ app.post("/process", upload.single("image"), async (req, res) => {
     res.sendFile(path.resolve(outputPath), (err) => {
       fs.unlinkSync(outputPath);
     });
-  } catch (error) {
+ } catch (error) {
+  if (error.response) {
+    console.error("Error procesando imagen (respuesta API):", error.response.status, error.response.data?.toString());
+  } else {
     console.error("Error procesando imagen:", error.message);
-    res.status(500).send("Error procesando la imagen");
   }
-});
+  res.status(500).send("Error procesando la imagen");
+}
 
 app.listen(PORT, () => console.log(`Servidor escuchando en puerto ${PORT}`));
