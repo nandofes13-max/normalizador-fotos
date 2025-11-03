@@ -1,53 +1,54 @@
 import express from "express";
+import multer from "multer";
 import axios from "axios";
 import FormData from "form-data";
+import sharp from "sharp";
 import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const upload = multer({ dest: "uploads/" });
 
-// Configuración para rutas absolutas
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+app.use(express.static("public"));
+app.use(express.json());
 
-// Middleware para servir archivos estáticos (frontend)
-app.use(express.static(path.join(__dirname, "public")));
-app.use(express.json({ limit: "10mb" }));
+const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY;
 
-// --- RUTA: procesar imagen ---
-app.post("/api/procesar", async (req, res) => {
+app.post("/process", upload.single("image"), async (req, res) => {
   try {
-    const { imageBase64 } = req.body;
+    const form = new FormData();
+    form.append("image_file", fs.createReadStream(req.file.path));
 
-    if (!imageBase64) {
-      return res.status(400).json({ error: "No se recibió ninguna imagen" });
-    }
+    // Llamada a ClipDrop
+    const response = await axios.post(
+      "https://clipdrop-api.co/remove-background/v1",
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+          "x-api-key": CLIPDROP_API_KEY,
+        },
+        responseType: "arraybuffer",
+      }
+    );
 
-    // Convierte la imagen base64 a binario
-    const buffer = Buffer.from(imageBase64.split(",")[1], "base64");
+    const outputBuffer = await sharp(response.data)
+      .resize({
+        width: 800,
+        height: 800,
+        fit: "contain",
+        background: "#ffffff",
+      })
+      .toBuffer();
 
-    const formData = new FormData();
-    formData.append("image_file", buffer, { filename: "upload.png" });
+    fs.unlinkSync(req.file.path); // borra archivo temporal
 
-    // Llamada a la API de ClipDrop
-    const response = await axios.post("https://clipdrop-api.co/remove-background/v1", formData, {
-      headers: {
-        ...formData.getHeaders(),
-        "x-api-key": "c74c2f9e6cf2d112fc675b577bc0ce8b95f36d1ce4a5b2bea1a7f30f8c353d3ceb1a4add53b89e4afc089defc2f6c227"
-      },
-      responseType: "arraybuffer"
-    });
-
-    // Devuelve la imagen procesada como base64
-    const resultBase64 = Buffer.from(response.data).toString("base64");
-    res.json({ image: `data:image/png;base64,${resultBase64}` });
-
+    res.set("Content-Type", "image/png");
+    res.send(outputBuffer);
   } catch (error) {
     console.error("Error procesando imagen:", error.message);
-    res.status(500).json({ error: "No se pudo procesar la imagen" });
+    res.status(500).json({ error: "Error procesando imagen" });
   }
 });
 
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`Servidor escuchando en puerto ${PORT}`));
