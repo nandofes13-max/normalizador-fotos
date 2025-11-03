@@ -1,15 +1,16 @@
 {
   "name": "normalizador-fotos",
   "version": "1.0.0",
-  "type": "module",
-  "description": "Aplicación simple para normalizar imágenes de productos con fondo blanco y tamaño estándar.",
+  "description": "Normalizador de fotos para catálogos Jumpseller y Kyte",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "axios": "^1.7.2",
-    "form-data": "^4.0.0"
+    "axios": "^1.6.0",
+    "express": "^4.18.2",
+    "form-data": "^4.0.0",
+    "sharp": "^0.33.0"
   }
 }
