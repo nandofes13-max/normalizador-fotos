@@ -35,7 +35,7 @@ app.post("/api/procesar", async (req, res) => {
     const response = await axios.post("https://clipdrop-api.co/remove-background/v1", formData, {
       headers: {
         ...formData.getHeaders(),
-        "x-api-key": "10b6339dc2654cfa176c601709fb0831de2debdb4a78edfb525cb7f2fa52f28ff5e8b3324f7ff92b702cb1694b826746"
+        "x-api-key": "mObkuUk7EOWWh8odnC9CoIRQtnv2"
       },
       responseType: "arraybuffer"
     });
