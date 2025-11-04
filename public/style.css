@@ -5,16 +5,56 @@ body {
   background: #fafafa;
 }
 
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
 .hidden {
   display: none;
 }
 
-canvas {
+.preview {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+img, canvas {
   border: 1px solid #ccc;
-  margin: 20px auto;
-  display: block;
+  border-radius: 8px;
+  max-width: 400px;
+  height: auto;
 }
 
 .controls {
   margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+button {
+  padding: 10px 20px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #0056b3;
+}
+
+#downloadBtn {
+  background: #28a745;
+}
+
+#downloadBtn:hover {
+  background: #218838;
 }
