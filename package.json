@@ -1,22 +1,17 @@
 {
   "name": "normalizador-fotos",
   "version": "1.0.0",
-  "description": "App para normalizar y procesar imágenes con fondo blanco y previsualización lado a lado",
+  "description": "Herramienta para normalizar fotos de productos (fondo blanco y tamaño estándar)",
   "main": "server.js",
   "type": "module",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
+    "express": "^4.19.2",
     "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "multer": "^1.4.5",
     "node-fetch": "^3.3.2",
-    "form-data": "^4.0.0"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "author": "Fernando Campagña",
-  "license": "MIT"
+    "form-data": "^4.0.0",
+    "multer": "^1.4.5-lts.1"
+  }
 }
