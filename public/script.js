@@ -5,10 +5,12 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const zoom = document.getElementById("zoom");
 const downloadBtn = document.getElementById("downloadBtn");
-const originalImgElement = document.getElementById("original"); // Elemento para mostrar original
+const originalImgElement = document.getElementById("original");
 
 let originalImage = null;
-let uploadedImage = null; // Imagen subida antes de procesar
+let uploadedImage = null;
+let currentScale = 1;
+let croppedImage = null; // Imagen recortada
 
 // ✅ MOSTRAR IMAGEN ORIGINAL AL SUBIRLA
 imageInput.addEventListener("change", (e) => {
@@ -17,30 +19,24 @@ imageInput.addEventListener("change", (e) => {
 
   const reader = new FileReader();
   reader.onload = (event) => {
-    // Mostrar imagen original en el elemento <img>
     originalImgElement.src = event.target.result;
     
-    // Crear objeto Image para usar luego en el canvas
     uploadedImage = new Image();
     uploadedImage.src = event.target.result;
     uploadedImage.onload = () => {
-      // Mostrar el contenedor de previsualización
       previewContainer.classList.remove("hidden");
-      
-      // Dibujar la imagen original en el canvas temporalmente
       drawOriginalImage();
     };
   };
   reader.readAsDataURL(file);
 });
 
-// ✅ PROCESAR IMAGEN (remover fondo)
+// ✅ PROCESAR IMAGEN CON RECORTE AUTOMÁTICO
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const file = imageInput.files[0];
   if (!file) return;
 
-  // Mostrar loading
   const originalButton = form.querySelector('button');
   originalButton.textContent = 'Procesando...';
   originalButton.disabled = true;
@@ -60,12 +56,15 @@ form.addEventListener("submit", async (e) => {
     
     const result = await res.json();
     
-    // Cargar la imagen procesada (sin fondo)
     const img = new Image();
     img.src = result.procesada;
-    img.onload = () => {
+    img.onload = async () => {
+      // ✅ RECORTAR BORDES TRANSPARENTES
       originalImage = img;
-      // Dibujar la imagen procesada en canvas con fondo blanco
+      croppedImage = await autoCropTransparent(img);
+      
+      currentScale = 1;
+      zoom.value = 100;
       drawProcessedImage();
       originalButton.textContent = 'Procesar imagen';
       originalButton.disabled = false;
@@ -79,20 +78,71 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-// ✅ DIBUJAR IMAGEN ORIGINAL (antes de procesar)
+// ✅ FUNCIÓN RECORTE AUTOMÁTICO (Opción 1)
+async function autoCropTransparent(image) {
+  return new Promise((resolve) => {
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    tempCanvas.width = image.width;
+    tempCanvas.height = image.height;
+    tempCtx.drawImage(image, 0, 0);
+    
+    const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+    const data = imageData.data;
+    
+    let top = tempCanvas.height, bottom = 0, left = tempCanvas.width, right = 0;
+    
+    // Encontrar los bordes reales del contenido
+    for (let y = 0; y < tempCanvas.height; y++) {
+      for (let x = 0; x < tempCanvas.width; x++) {
+        const alpha = data[(y * tempCanvas.width + x) * 4 + 3];
+        if (alpha > 10) { // Umbral de transparencia
+          if (y < top) top = y;
+          if (y > bottom) bottom = y;
+          if (x < left) left = x;
+          if (x > right) right = x;
+        }
+      }
+    }
+    
+    const width = Math.max(1, right - left + 1);
+    const height = Math.max(1, bottom - top + 1);
+    
+    console.log(`✂️ Recortando de ${image.width}x${image.height} a ${width}x${height}`);
+    
+    const croppedCanvas = document.createElement('canvas');
+    croppedCanvas.width = width;
+    croppedCanvas.height = height;
+    const croppedCtx = croppedCanvas.getContext('2d');
+    
+    // Dibujar con fondo blanco
+    croppedCtx.fillStyle = 'white';
+    croppedCtx.fillRect(0, 0, width, height);
+    croppedCtx.drawImage(
+      tempCanvas,
+      left, top, width, height,
+      0, 0, width, height
+    );
+    
+    const croppedImage = new Image();
+    croppedImage.onload = () => resolve(croppedImage);
+    croppedImage.src = croppedCanvas.toDataURL('image/png');
+  });
+}
+
+// ✅ DIBUJAR IMAGEN ORIGINAL
 function drawOriginalImage() {
   if (!uploadedImage) return;
   
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  // Dibujar fondo blanco
   ctx.fillStyle = "white";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // Calcular dimensiones para mantener proporción
   const scale = Math.min(
     canvas.width / uploadedImage.width,
     canvas.height / uploadedImage.height,
-    1 // No escalar más del 100%
+    0.8
   );
   
   const w = uploadedImage.width * scale;
@@ -103,40 +153,41 @@ function drawOriginalImage() {
   ctx.drawImage(uploadedImage, x, y, w, h);
 }
 
-// ✅ DIBUJAR IMAGEN PROCESADA (sin fondo + fondo blanco)
-function drawProcessedImage(scale = 1) {
-  if (!originalImage) return;
+// ✅ DIBUJAR IMAGEN PROCESADA Y RECORTADA
+function drawProcessedImage() {
+  const imageToDraw = croppedImage || originalImage;
+  if (!imageToDraw) return;
   
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  // Dibujar fondo blanco
   ctx.fillStyle = "white";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // Calcular dimensiones manteniendo proporción
-  const imgScale = Math.min(
-    (canvas.width / originalImage.width) * scale,
-    (canvas.height / originalImage.height) * scale,
-    1.5 // Límite máximo de zoom
+  const baseScale = Math.min(
+    canvas.width / imageToDraw.width,
+    canvas.height / imageToDraw.height,
+    0.8
   );
   
-  const w = originalImage.width * imgScale;
-  const h = originalImage.height * imgScale;
+  const finalScale = baseScale * currentScale;
+  const w = imageToDraw.width * finalScale;
+  const h = imageToDraw.height * finalScale;
   const x = (canvas.width - w) / 2;
   const y = (canvas.height - h) / 2;
   
-  ctx.drawImage(originalImage, x, y, w, h);
+  ctx.drawImage(imageToDraw, x, y, w, h);
 }
 
 // ✅ CONTROL DE ZOOM
 zoom.addEventListener("input", () => {
-  if (originalImage) {
-    drawProcessedImage(zoom.value / 100);
+  currentScale = zoom.value / 100;
+  if (croppedImage || originalImage) {
+    drawProcessedImage();
   }
 });
 
 // ✅ DESCARGAR IMAGEN
 downloadBtn.addEventListener("click", () => {
-  if (!originalImage) {
+  if (!croppedImage && !originalImage) {
     alert("No hay imagen procesada para descargar");
     return;
   }
@@ -146,3 +197,10 @@ downloadBtn.addEventListener("click", () => {
   link.href = canvas.toDataURL("image/png");
   link.click();
 });
+
+// ✅ INICIALIZAR
+function initialize() {
+  currentScale = 1;
+  zoom.value = 100;
+}
+initialize();
