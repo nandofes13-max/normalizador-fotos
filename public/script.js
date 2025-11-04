@@ -4,7 +4,7 @@ const previewContainer = document.getElementById("preview-container");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const zoom = document.getElementById("zoom");
-const downloadBtn = document.getElementById("downloadBtn"); // ✅ CORREGIDO: "downloadBtn"
+const downloadBtn = document.getElementById("downloadBtn");
 
 let originalImage = null;
 
@@ -20,10 +20,10 @@ form.addEventListener("submit", async (e) => {
 
   try {
     const formData = new FormData();
-    formData.append("image", file);
+    formData.append("imagen", file); // ✅ CORREGIDO: "imagen" en lugar de "image"
 
-    // ✅ CORREGIDO: URL completa de Render
-    const res = await fetch("https://normalizador-fotos.onrender.com/process", { 
+    // ✅ CORREGIDO: Endpoint correcto "/procesar"
+    const res = await fetch("https://normalizador-fotos.onrender.com/procesar", { 
       method: "POST", 
       body: formData 
     });
@@ -32,14 +32,18 @@ form.addEventListener("submit", async (e) => {
       throw new Error(`Error del servidor: ${res.status}`);
     }
     
-    const blob = await res.blob();
+    // ✅ CORREGIDO: El servidor devuelve JSON, no blob
+    const result = await res.json();
+    
+    // Cargar la imagen procesada desde la URL que devuelve el servidor
     const img = new Image();
-    img.src = URL.createObjectURL(blob);
+    img.src = result.procesada; // ✅ Usar la URL de la imagen procesada
     img.onload = () => {
       originalImage = img;
       drawImage(1);
       previewContainer.classList.remove("hidden");
     };
+    
   } catch (error) {
     console.error("Error:", error);
     alert("Error al procesar la imagen. Verifica la consola para más detalles.");
@@ -63,7 +67,6 @@ function drawImage(scale) {
   ctx.drawImage(originalImage, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
 }
 
-// ✅ ESTA ES LA LÍNEA 43 CORREGIDA
 downloadBtn.addEventListener("click", () => {
   if (!originalImage) {
     alert("No hay imagen para descargar");
