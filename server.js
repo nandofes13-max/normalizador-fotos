@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import multer from "multer";
-import fetch from "node-fetch";
 import FormData from "form-data";
 import path from "path";
 import fs from "fs";
@@ -16,11 +15,10 @@ console.log("🔑 CLIPDROP_API_KEY detectada:", CLIPDROP_API_KEY ? "OK ✅" : "N
 app.use(cors());
 app.use(express.static("public"));
 
-// Configurar multer para almacenar archivos temporalmente
 const upload = multer({ 
   dest: "uploads/",
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB límite
+    fileSize: 10 * 1024 * 1024
   }
 });
 
@@ -43,7 +41,6 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const formData = new FormData();
     formData.append("image_file", fs.createReadStream(imagen.path));
 
-    // 1. REMOVER FONDO CON CLIPDROP
     const response = await fetch("https://clipdrop-api.co/remove-background/v1", {
       method: "POST",
       headers: {
@@ -63,27 +60,26 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     // 2. PROCESAR CON SHARP - RECORTAR, REDIMENSIONAR Y CREAR LIENZO
     const processedImage = await sharp(Buffer.from(buffer))
-      .png() // Convertir a PNG para mantener transparencia
+      .png()
       .toBuffer();
 
     // 3. RECORTAR BORDES TRANSPARENTES AUTOMÁTICAMENTE
     const { data, info } = await sharp(processedImage)
-      .trim() // Recorta bordes transparentes automáticamente
+      .trim()
       .png()
       .toBuffer({ resolveWithObject: true });
 
     console.log(`✂️ Imagen recortada: ${info.width}x${info.height}`);
 
     // 4. CREAR LIENZO CON FONDO BLANCO Y PRODUCTO CENTRADO
-    const canvasSize = 800; // Tamaño del lienzo final
-    const margin = 50; // Margen alrededor del producto
+    const canvasSize = 800;
+    const margin = 50;
     
-    // Calcular escala para que el producto quepa en el lienzo con márgenes
     const maxProductSize = canvasSize - (margin * 2);
     const scale = Math.min(
       maxProductSize / info.width,
       maxProductSize / info.height,
-      1 // No escalar más del 100%
+      1
     );
 
     const productWidth = Math.round(info.width * scale);
@@ -92,7 +88,6 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const productY = Math.round((canvasSize - productHeight) / 2);
 
     console.log(`📐 Producto redimensionado a: ${productWidth}x${productHeight}`);
-    console.log(`🎯 Posición en lienzo: (${productX}, ${productY})`);
 
     // 5. CREAR IMAGEN FINAL CON FONDO BLANCO Y PRODUCTO CENTRADO
     const finalImageBuffer = await sharp({
@@ -100,7 +95,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         width: canvasSize,
         height: canvasSize,
         channels: 3,
-        background: { r: 255, g: 255, b: 255 } // Fondo blanco
+        background: { r: 255, g: 255, b: 255 }
       }
     })
     .png()
@@ -124,12 +119,10 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const originalPath = path.join("uploads", `original_${timestamp}.jpg`);
     const processedPath = path.join("uploads", `procesada_${timestamp}.png`);
 
-    // Guardar original (convertida a JPG para consistencia)
     await sharp(imagen.path)
       .jpeg({ quality: 90 })
       .toFile(originalPath);
 
-    // Guardar procesada
     fs.writeFileSync(processedPath, finalImageBuffer);
 
     // 7. LIMPIAR ARCHIVO TEMPORAL
@@ -153,7 +146,6 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
   } catch (err) {
     console.error("💥 Error interno procesando imagen:", err);
     
-    // Limpiar archivo temporal en caso de error
     if (imagen && fs.existsSync(imagen.path)) {
       fs.unlinkSync(imagen.path);
     }
@@ -167,27 +159,6 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
 // Servir imágenes temporales
 app.use("/uploads", express.static("uploads"));
-
-// Limpiar archivos temporales antiguos (opcional)
-function cleanupOldFiles() {
-  const maxAge = 30 * 60 * 1000; // 30 minutos
-  const uploadsDir = "uploads";
-  
-  if (fs.existsSync(uploadsDir)) {
-    fs.readdirSync(uploadsDir).forEach(file => {
-      const filePath = path.join(uploadsDir, file);
-      const stats = fs.statSync(filePath);
-      
-      if (Date.now() - stats.mtime.getTime() > maxAge) {
-        fs.unlinkSync(filePath);
-        console.log(`🧹 Limpiado archivo antiguo: ${file}`);
-      }
-    });
-  }
-}
-
-// Ejecutar limpieza cada hora
-setInterval(cleanupOldFiles, 60 * 60 * 1000);
 
 app.listen(port, () => {
   console.log(`🚀 Servidor escuchando en puerto ${port}`);
