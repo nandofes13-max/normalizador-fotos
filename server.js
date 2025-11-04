@@ -37,16 +37,27 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
   console.log("🧩 Enviando a ClipDrop API...");
 
   try {
-    // ✅ FORMA CORRECTA para ClipDrop API
-    const imageBuffer = fs.readFileSync(imagen.path);
-    
+    // ✅ PREPROCESAR IMAGEN CON SHARP ANTES DE ENVIAR A CLIPDROP
+    const processedImageBuffer = await sharp(imagen.path)
+      .resize(2000, 2000, { // Redimensionar si es muy grande
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .jpeg({ 
+        quality: 85,
+        mozjpeg: true 
+      })
+      .toBuffer();
+
+    console.log(`📊 Imagen preprocesada: ${processedImageBuffer.length} bytes`);
+
     const response = await fetch("https://clipdrop-api.co/remove-background/v1", {
       method: "POST",
       headers: {
         "x-api-key": CLIPDROP_API_KEY,
-        "Content-Type": "image/jpeg", // Especificar el tipo de contenido
+        "Content-Type": "image/jpeg",
       },
-      body: imageBuffer, // Enviar el buffer directamente
+      body: processedImageBuffer,
     });
 
     if (!response.ok) {
@@ -55,6 +66,15 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       
       // Limpiar archivo temporal
       fs.unlinkSync(imagen.path);
+      
+      // Si es error 500, sugerir intentar con otra imagen
+      if (response.status === 500) {
+        return res.status(500).json({ 
+          error: "Error interno del servicio de procesamiento", 
+          detalle: "Intente con una imagen diferente o más tarde",
+          sugerencia: "Use una imagen JPG/PNG con buen contraste entre el objeto y el fondo"
+        });
+      }
       
       return res.status(response.status).json({ 
         error: "Error procesando imagen", 
@@ -65,7 +85,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const buffer = await response.arrayBuffer();
     console.log("✅ Fondo removido correctamente.");
 
-    // PROCESAR CON SHARP
+    // PROCESAR RESULTADO CON SHARP
     const { data, info } = await sharp(Buffer.from(buffer))
       .trim() // Recortar bordes transparentes
       .png()
@@ -121,10 +141,8 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const originalPath = path.join("uploads", `original_${timestamp}.jpg`);
     const processedPath = path.join("uploads", `procesada_${timestamp}.png`);
 
-    await sharp(imagen.path)
-      .jpeg({ quality: 90 })
-      .toFile(originalPath);
-
+    // Guardar original preprocesada
+    fs.writeFileSync(originalPath, processedImageBuffer);
     fs.writeFileSync(processedPath, finalImageBuffer);
 
     // LIMPIAR TEMPORALES
