@@ -1,64 +1,85 @@
 import express from "express";
 import multer from "multer";
-import axios from "axios";
+import fetch from "node-fetch";
 import fs from "fs";
-import sharp from "sharp";
+import path from "path";
+import { fileURLToPath } from "url";
+import cors from "cors";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const upload = multer({ dest: "uploads/" });
+app.use(cors());
+app.use(express.static("public"));
+
 const PORT = process.env.PORT || 10000;
 const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY;
 
-app.use(express.static("public"));
+console.log("----------------------------------------------------");
+console.log("🚀 Servidor iniciando...");
+console.log(`🧩 Puerto: ${PORT}`);
+console.log(`🔑 API key cargada: ${CLIPDROP_API_KEY ? "✅ Sí" : "❌ No detectada"}`);
+console.log("----------------------------------------------------");
 
 app.post("/process", upload.single("image"), async (req, res) => {
+  if (!req.file) {
+    console.error("❌ No se recibió ninguna imagen en el request.");
+    return res.status(400).json({ error: "No se recibió ninguna imagen" });
+  }
+
+  if (!CLIPDROP_API_KEY) {
+    console.error("❌ Falta CLIPDROP_API_KEY en variables de entorno.");
+    return res.status(500).json({ error: "Falta CLIPDROP_API_KEY" });
+  }
+
+  const imagePath = path.resolve(req.file.path);
+  console.log("📸 Imagen recibida:", imagePath);
+
   try {
-    if (!req.file) return res.status(400).send("No se subió ninguna imagen");
+    const formData = new FormData();
+    formData.append("image_file", fs.createReadStream(imagePath));
 
-    const imageBuffer = fs.readFileSync(req.file.path);
+    console.log("📡 Enviando solicitud a ClipDrop...");
 
-    // Enviar la imagen a ClipDrop (Remove Background)
-    const clipdropResponse = await axios.post(
-      "https://clipdrop-api.co/remove-background/v1",
-      imageBuffer,
-      {
-        headers: {
-          "x-api-key": CLIPDROP_API_KEY,
-          "Content-Type": "application/octet-stream",
-        },
-        responseType: "arraybuffer",
-      }
-    );
+    const response = await fetch("https://clipdrop-api.co/remove-background/v1", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${CLIPDROP_API_KEY}` },
+      body: formData,
+    });
 
-    // Redimensionar y colocar fondo blanco normalizado
-    const processedImage = await sharp(clipdropResponse.data)
-      .resize({
-        width: 527,
-        height: 527,
-        fit: "contain",
-        background: { r: 255, g: 255, b: 255 },
-      })
-      .png()
-      .toBuffer();
+    console.log("📨 Respuesta ClipDrop status:", response.status);
 
-    fs.unlinkSync(req.file.path);
-    res.set("Content-Type", "image/png");
-    res.send(processedImage);
-
-  } catch (error) {
-    if (error.response) {
-      console.error(
-        "Error procesando imagen (respuesta API):",
-        error.response.status,
-        error.response.data?.toString()
-      );
-    } else {
-      console.error("Error procesando imagen:", error.message);
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      const json = await response.json();
+      console.error("❌ Error procesando imagen (respuesta API):", response.status, JSON.stringify(json));
+      return res.status(500).json({ error: json });
     }
-    res.status(500).send("Error procesando la imagen");
+
+    if (!response.ok) {
+      console.error("❌ Error no JSON en ClipDrop:", response.status, await response.text());
+      return res.status(500).json({ error: "Error no JSON desde ClipDrop" });
+    }
+
+    // Guardar imagen procesada
+    const outputPath = path.resolve("processed", `${req.file.filename}-processed.png`);
+    fs.mkdirSync("processed", { recursive: true });
+
+    const buffer = await response.arrayBuffer();
+    fs.writeFileSync(outputPath, Buffer.from(buffer));
+
+    console.log("✅ Imagen procesada correctamente:", outputPath);
+    res.sendFile(outputPath);
+  } catch (err) {
+    console.error("💥 Error procesando imagen:", err);
+    res.status(500).json({ error: "Error procesando imagen", details: err.message });
+  } finally {
+    fs.unlink(imagePath, () => {}); // limpia archivo temporal
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Servidor escuchando en puerto ${PORT}`);
+  console.log(`✅ Servidor escuchando en puerto ${PORT}`);
 });
