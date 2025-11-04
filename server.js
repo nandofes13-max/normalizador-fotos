@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import multer from "multer";
-import FormData from "form-data";
 import path from "path";
 import fs from "fs";
 import sharp from "sharp";
@@ -38,40 +37,43 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
   console.log("🧩 Enviando a ClipDrop API...");
 
   try {
-    const formData = new FormData();
-    formData.append("image_file", fs.createReadStream(imagen.path));
-
+    // ✅ FORMA CORRECTA para ClipDrop API
+    const imageBuffer = fs.readFileSync(imagen.path);
+    
     const response = await fetch("https://clipdrop-api.co/remove-background/v1", {
       method: "POST",
       headers: {
         "x-api-key": CLIPDROP_API_KEY,
+        "Content-Type": "image/jpeg", // Especificar el tipo de contenido
       },
-      body: formData,
+      body: imageBuffer, // Enviar el buffer directamente
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`⚠️ Error ClipDrop API: ${response.status} ${errorText}`);
-      return res.status(response.status).json({ error: "Error desde ClipDrop API", detalle: errorText });
+      
+      // Limpiar archivo temporal
+      fs.unlinkSync(imagen.path);
+      
+      return res.status(response.status).json({ 
+        error: "Error procesando imagen", 
+        detalle: `ClipDrop API: ${response.status} - ${errorText}` 
+      });
     }
 
     const buffer = await response.arrayBuffer();
     console.log("✅ Fondo removido correctamente.");
 
-    // 2. PROCESAR CON SHARP - RECORTAR, REDIMENSIONAR Y CREAR LIENZO
-    const processedImage = await sharp(Buffer.from(buffer))
-      .png()
-      .toBuffer();
-
-    // 3. RECORTAR BORDES TRANSPARENTES AUTOMÁTICAMENTE
-    const { data, info } = await sharp(processedImage)
-      .trim()
+    // PROCESAR CON SHARP
+    const { data, info } = await sharp(Buffer.from(buffer))
+      .trim() // Recortar bordes transparentes
       .png()
       .toBuffer({ resolveWithObject: true });
 
     console.log(`✂️ Imagen recortada: ${info.width}x${info.height}`);
 
-    // 4. CREAR LIENZO CON FONDO BLANCO Y PRODUCTO CENTRADO
+    // CREAR LIENZO CON FONDO BLANCO
     const canvasSize = 800;
     const margin = 50;
     
@@ -89,7 +91,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     console.log(`📐 Producto redimensionado a: ${productWidth}x${productHeight}`);
 
-    // 5. CREAR IMAGEN FINAL CON FONDO BLANCO Y PRODUCTO CENTRADO
+    // IMAGEN FINAL
     const finalImageBuffer = await sharp({
       create: {
         width: canvasSize,
@@ -114,7 +116,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     .png()
     .toBuffer();
 
-    // 6. GUARDAR RESULTADOS
+    // GUARDAR RESULTADOS
     const timestamp = Date.now();
     const originalPath = path.join("uploads", `original_${timestamp}.jpg`);
     const processedPath = path.join("uploads", `procesada_${timestamp}.png`);
@@ -125,12 +127,11 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     fs.writeFileSync(processedPath, finalImageBuffer);
 
-    // 7. LIMPIAR ARCHIVO TEMPORAL
+    // LIMPIAR TEMPORALES
     fs.unlinkSync(imagen.path);
 
     console.log("🎉 Procesamiento completado correctamente");
 
-    // 8. ENVIAR RESPUESTA AL FRONTEND
     res.json({
       success: true,
       original: `/uploads/${path.basename(originalPath)}`,
@@ -159,6 +160,11 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
 // Servir imágenes temporales
 app.use("/uploads", express.static("uploads"));
+
+// Crear directorio uploads si no existe
+if (!fs.existsSync("uploads")) {
+  fs.mkdirSync("uploads");
+}
 
 app.listen(port, () => {
   console.log(`🚀 Servidor escuchando en puerto ${port}`);
