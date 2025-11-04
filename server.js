@@ -9,6 +9,8 @@ import fs from "fs";
 const app = express();
 const port = process.env.PORT || 10000;
 const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY;
+console.log("🔑 CLIPDROP_API_KEY detectada:", CLIPDROP_API_KEY ? "OK ✅" : "NO ❌");
+
 
 app.use(cors());
 app.use(express.static("public"));
