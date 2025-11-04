@@ -11,7 +11,6 @@ const port = process.env.PORT || 10000;
 const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY;
 console.log("🔑 CLIPDROP_API_KEY detectada:", CLIPDROP_API_KEY ? "OK ✅" : "NO ❌");
 
-
 app.use(cors());
 app.use(express.static("public"));
 
@@ -36,10 +35,11 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const formData = new FormData();
     formData.append("image_file", fs.createReadStream(imagen.path));
 
+    // 🔥 CORRECCIÓN: Usar x-api-key en lugar de Authorization
     const response = await fetch("https://clipdrop-api.co/remove-background/v1", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${CLIPDROP_API_KEY}`,
+        "x-api-key": CLIPDROP_API_KEY,  // ← ESTA ES LA CORRECCIÓN
       },
       body: formData,
     });
