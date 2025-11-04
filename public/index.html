@@ -4,69 +4,36 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Normalizador de Fotos</title>
-  <style>
-    body { font-family: Arial, sans-serif; background: #f8f9fa; margin: 0; padding: 2rem; }
-    .container { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
-    .preview { display: flex; gap: 1rem; justify-content: center; margin-top: 1rem; }
-    img { border: 1px solid #ccc; border-radius: 8px; max-width: 380px; height: auto; }
-    .slider { margin-top: 10px; width: 400px; }
-    button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; }
-    button:hover { background: #0056b3; }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
     <h1>🧴 Normalizador de Fotos</h1>
-    <form id="formulario">
-      <input type="file" id="imagen" name="imagen" accept="image/*" required>
+    
+    <form id="uploadForm">
+      <input type="file" id="imageInput" name="image" accept="image/*" required>
       <button type="submit">Procesar imagen</button>
     </form>
 
-    <div class="preview">
-      <div>
-        <h3>Original</h3>
-        <img id="original" src="" alt="Original">
-      </div>
-      <div>
-        <h3>Procesada</h3>
-        <img id="procesada" src="" alt="Procesada">
-        <input type="range" id="slider" class="slider" min="50" max="150" value="100">
+    <div id="preview-container" class="hidden">
+      <div class="preview">
+        <div>
+          <h3>Original</h3>
+          <img id="original" src="" alt="Original">
+        </div>
+        <div>
+          <h3>Procesada</h3>
+          <canvas id="canvas" width="400" height="400"></canvas>
+          <div class="controls">
+            <label>Tamaño: </label>
+            <input type="range" id="zoom" min="50" max="150" value="100">
+            <button id="downloadBtn">📥 Descargar Imagen</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <script>
-    const form = document.getElementById("formulario");
-    const original = document.getElementById("original");
-    const procesada = document.getElementById("procesada");
-    const slider = document.getElementById("slider");
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const file = document.getElementById("imagen").files[0];
-      if (!file) return alert("Seleccioná una imagen");
-
-      const data = new FormData();
-      data.append("imagen", file);
-
-      original.src = URL.createObjectURL(file);
-      procesada.src = "";
-      procesada.style.transform = "scale(1)";
-
-      const res = await fetch("/procesar", { method: "POST", body: data });
-      const result = await res.json();
-
-      if (res.ok) {
-        procesada.src = result.procesada + "?t=" + Date.now();
-      } else {
-        alert("Error: " + (result.detalle || "No se pudo procesar la imagen"));
-      }
-    });
-
-    slider.addEventListener("input", () => {
-      const scale = slider.value / 100;
-      procesada.style.transform = `scale(${scale})`;
-    });
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
