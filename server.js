@@ -37,24 +37,16 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
   console.log("🧩 Enviando a ClipDrop API...");
 
   try {
-    // ✅ ENFOQUE ALTERNATIVO: Usar FormData con node-fetch style
-    const FormData = await import('form-data');
-    const form = new FormData.default();
-    
-    // Leer el archivo y agregarlo al form
-    const imageStream = fs.createReadStream(imagen.path);
-    form.append('image_file', imageStream, {
-      filename: imagen.originalname,
-      contentType: 'image/jpeg'
-    });
+    // ✅ ENVIAR LA IMAGEN ORIGINAL SIN MODIFICACIONES
+    const imageBuffer = fs.readFileSync(imagen.path);
+    console.log(`📊 Tamaño de imagen original: ${imageBuffer.length} bytes`);
 
     const response = await fetch("https://clipdrop-api.co/remove-background/v1", {
       method: "POST",
       headers: {
         "x-api-key": CLIPDROP_API_KEY,
-        ...form.getHeaders() // Incluir headers del FormData
       },
-      body: form
+      body: imageBuffer, // Enviar buffer original
     });
 
     if (!response.ok) {
