@@ -12,6 +12,7 @@ const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY;
 console.log("🔑 CLIPDROP_API_KEY detectada:", CLIPDROP_API_KEY ? "OK ✅" : "NO ❌");
 
 app.use(cors());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static("public"));
 
 const upload = multer({ 
@@ -27,35 +28,36 @@ app.get("/", (req, res) => {
 
 app.post("/procesar", upload.single("imagen"), async (req, res) => {
   const imagen = req.file;
+  const imageFormat = req.body.imageFormat;
 
   if (!imagen) {
     console.error("❌ No se recibió ninguna imagen");
     return res.status(400).json({ error: "No se recibió ninguna imagen" });
   }
 
+  if (!imageFormat) {
+    console.error("❌ No se especificó el formato Jumpseller");
+    return res.status(400).json({ error: "Seleccione el formato Jumpseller" });
+  }
+
   console.log("📸 Imagen recibida:", imagen.originalname);
-  console.log("🧩 Enviando a ClipDrop API...");
+  console.log("🛍️ Formato Jumpseller:", imageFormat);
 
   try {
-    // ✅ ENVIAR LA IMAGEN ORIGINAL SIN MODIFICACIONES
+    // ENVIAR A CLIPDROP
     const imageBuffer = fs.readFileSync(imagen.path);
-    console.log(`📊 Tamaño de imagen original: ${imageBuffer.length} bytes`);
-
     const response = await fetch("https://clipdrop-api.co/remove-background/v1", {
       method: "POST",
       headers: {
         "x-api-key": CLIPDROP_API_KEY,
       },
-      body: imageBuffer, // Enviar buffer original
+      body: imageBuffer,
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`⚠️ Error ClipDrop API: ${response.status} ${errorText}`);
-      
-      // Limpiar archivo temporal
       fs.unlinkSync(imagen.path);
-      
       return res.status(response.status).json({ 
         error: "Error procesando imagen", 
         detalle: `ClipDrop API: ${response.status} - ${errorText}` 
@@ -65,7 +67,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const buffer = await response.arrayBuffer();
     console.log("✅ Fondo removido correctamente.");
 
-    // PROCESAR RESULTADO CON SHARP
+    // PROCESAR CON SHARP
     const { data, info } = await sharp(Buffer.from(buffer))
       .trim()
       .png()
@@ -73,29 +75,45 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     console.log(`✂️ Imagen recortada: ${info.width}x${info.height}`);
 
-    // CREAR LIENZO CON FONDO BLANCO
-    const canvasSize = 800;
-    const margin = 50;
+    // DIMENSIONES ESTÁNDAR JUMPSELLER
+    const jumpsellerFormats = {
+      square:       { width: 527, height: 527, label: "Cuadrado 1:1" },
+      portrait:     { width: 527, height: 702, label: "Retrato 3:4" },
+      landscape:    { width: 527, height: 296, label: "Apaisado 16:9" },
+      rectangular:  { width: 527, height: 395, label: "Rectangular 4:3" }
+    };
+
+    const format = jumpsellerFormats[imageFormat];
+    if (!format) {
+      throw new Error(`Formato Jumpseller no válido: ${imageFormat}`);
+    }
+
+    console.log(`🎯 Formato: ${format.label} (${format.width}x${format.height}px)`);
+
+    // CALCULAR ESCALA PARA AJUSTAR AL FORMATO SELECCIONADO
+    const margin = 0.1; // 10% de margen
+    const availableWidth = format.width * (1 - margin);
+    const availableHeight = format.height * (1 - margin);
+
+    const scaleX = availableWidth / info.width;
+    const scaleY = availableHeight / info.height;
     
-    const maxProductSize = canvasSize - (margin * 2);
-    const scale = Math.min(
-      maxProductSize / info.width,
-      maxProductSize / info.height,
-      1
-    );
+    const scale = Math.min(scaleX, scaleY);
 
     const productWidth = Math.round(info.width * scale);
     const productHeight = Math.round(info.height * scale);
-    const productX = Math.round((canvasSize - productWidth) / 2);
-    const productY = Math.round((canvasSize - productHeight) / 2);
+    const productX = Math.round((format.width - productWidth) / 2);
+    const productY = Math.round((format.height - productHeight) / 2);
 
-    console.log(`📐 Producto redimensionado a: ${productWidth}x${productHeight}`);
+    console.log(`📐 Producto original: ${info.width}x${info.height}`);
+    console.log(`📐 Escala aplicada: ${(scale * 100).toFixed(1)}%`);
+    console.log(`📐 Tamaño producto: ${productWidth}x${productHeight}px`);
 
-    // IMAGEN FINAL
+    // CREAR IMAGEN FINAL CON DIMENSIONES JUMPSELLER
     const finalImageBuffer = await sharp({
       create: {
-        width: canvasSize,
-        height: canvasSize,
+        width: format.width,
+        height: format.height,
         channels: 3,
         background: { r: 255, g: 255, b: 255 }
       }
@@ -119,25 +137,23 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     // GUARDAR RESULTADOS
     const timestamp = Date.now();
     const originalPath = path.join("uploads", `original_${timestamp}.jpg`);
-    const processedPath = path.join("uploads", `procesada_${timestamp}.png`);
+    const processedPath = path.join("uploads", `jumpseller_${timestamp}.png`);
 
-    // Guardar copia del original
     fs.copyFileSync(imagen.path, originalPath);
     fs.writeFileSync(processedPath, finalImageBuffer);
-
-    // LIMPIAR TEMPORALES
     fs.unlinkSync(imagen.path);
 
-    console.log("🎉 Procesamiento completado correctamente");
+    console.log("🎉 Imagen lista para Jumpseller");
 
     res.json({
       success: true,
       original: `/uploads/${path.basename(originalPath)}`,
       procesada: `/uploads/${path.basename(processedPath)}`,
       detalles: {
-        tamañoOriginal: `${info.width}x${info.height}`,
-        tamañoFinal: `${productWidth}x${productHeight}`,
-        lienzo: `${canvasSize}x${canvasSize}`,
+        formato: format.label,
+        dimensiones: `${format.width}x${format.height}px`,
+        productoOriginal: `${info.width}x${info.height}px`,
+        productoTamaño: `${productWidth}x${productHeight}px`,
         escala: `${(scale * 100).toFixed(1)}%`
       }
     });
@@ -159,7 +175,6 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 // Servir imágenes temporales
 app.use("/uploads", express.static("uploads"));
 
-// Crear directorio uploads si no existe
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
 }
