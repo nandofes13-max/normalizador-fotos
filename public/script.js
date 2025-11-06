@@ -12,15 +12,14 @@ let processedImage = null;
 let currentScale = 1;
 let currentImageFile = null;
 
-// ACTUALIZAR TAMAÑO DEL CANVAS SEGÚN FORMATO
-function updateCanvasSize() {
-  const format = imageFormatSelect.value;
-  const sizes = {
-    square: { width: 527, height: 527 },
-    portrait: { width: 527, height: 702 },
-    landscape: { width: 527, height: 296 },
-    rectangular: { width: 527, height: 395 }
-  };
+// En updateCanvasSize(), agregar:
+const sizes = {
+  proportion65: { width: 1200, height: 1000 },
+  square: { width: 527, height: 527 },
+  portrait: { width: 527, height: 702 },
+  landscape: { width: 527, height: 296 },
+  rectangular: { width: 527, height: 395 }
+};
   
   const size = sizes[format];
   canvas.width = size.width;
