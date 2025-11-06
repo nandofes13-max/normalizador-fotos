@@ -8,22 +8,38 @@ const zoom = document.getElementById("zoom");
 const downloadBtn = document.getElementById("downloadBtn");
 const originalImgElement = document.getElementById("original");
 
+// Elementos para datos técnicos
+const originalTech = document.getElementById("original-tech");
+const originalCanvasSize = document.getElementById("original-canvas-size");
+const originalBackground = document.getElementById("original-background");
+const originalProductSize = document.getElementById("original-product-size");
+const processedTech = document.getElementById("processed-tech");
+const processedCanvasSize = document.getElementById("processed-canvas-size");
+const processedBackground = document.getElementById("processed-background");
+const processedProductSize = document.getElementById("processed-product-size");
+const processedScale = document.getElementById("processed-scale");
+
 let processedImage = null;
 let currentScale = 1;
 let currentImageFile = null;
+let currentImageInfo = null;
 
-// En updateCanvasSize(), agregar:
-const sizes = {
-  proportion65: { width: 1200, height: 1000 },
-  square: { width: 527, height: 527 },
-  portrait: { width: 527, height: 702 },
-  landscape: { width: 527, height: 296 },
-  rectangular: { width: 527, height: 395 }
-};
+// ACTUALIZAR TAMAÑO DEL CANVAS SEGÚN FORMATO
+function updateCanvasSize() {
+  const format = imageFormatSelect.value;
+  const sizes = {
+    proportion65: { width: 1200, height: 1000 },
+    square: { width: 527, height: 527 },
+    portrait: { width: 527, height: 702 },
+    landscape: { width: 527, height: 296 },
+    rectangular: { width: 527, height: 395 }
+  };
   
   const size = sizes[format];
-  canvas.width = size.width;
-  canvas.height = size.height;
+  if (size) {
+    canvas.width = size.width;
+    canvas.height = size.height;
+  }
   
   // Redibujar si hay imagen procesada
   if (processedImage) {
@@ -39,17 +55,51 @@ imageInput.addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  currentImageFile = file; // Guardar archivo para reprocesar
+  currentImageFile = file;
 
   const reader = new FileReader();
   reader.onload = (event) => {
     originalImgElement.src = event.target.result;
+    
+    // Obtener información de la imagen original
+    const img = new Image();
+    img.onload = function() {
+      currentImageInfo = {
+        width: this.width,
+        height: this.height
+      };
+      showOriginalTechData();
+    };
+    img.src = event.target.result;
+    
     previewContainer.classList.remove("hidden");
+    originalTech.classList.remove("hidden");
   };
   reader.readAsDataURL(file);
 });
 
-// PROCESAR IMAGEN CON FORMATO JUMPSELLER
+// MOSTRAR DATOS TÉCNICOS ORIGINALES
+function showOriginalTechData() {
+  if (!currentImageInfo) return;
+  
+  originalCanvasSize.textContent = `Tamaño del lienzo: ${currentImageInfo.width} × ${currentImageInfo.height} px`;
+  originalBackground.textContent = `Fondo: Original de la imagen`;
+  originalProductSize.textContent = `Tamaño del producto: ${currentImageInfo.width} × ${currentImageInfo.height} px`;
+}
+
+// MOSTRAR DATOS TÉCNICOS PROCESADOS
+function showProcessedTechData(detalles) {
+  if (!detalles) return;
+  
+  processedCanvasSize.textContent = `Tamaño del lienzo: ${detalles.dimensiones}`;
+  processedBackground.textContent = `Fondo: Blanco`;
+  processedProductSize.textContent = `Tamaño del producto: ${detalles.productoTamaño}`;
+  processedScale.textContent = `Escala aplicada: ${detalles.escala}`;
+  
+  processedTech.classList.remove("hidden");
+}
+
+// PROCESAR IMAGEN
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const file = currentImageFile || imageInput.files[0];
@@ -76,7 +126,17 @@ form.addEventListener("submit", async (e) => {
     
     if (!res.ok) {
       const errorData = await res.json();
-      throw new Error(errorData.error || `Error del servidor: ${res.status}`);
+      
+      // AJUSTE 4: Mostrar alerta si falla ClipDrop pero continuar
+      if (errorData.detalle && errorData.detalle.includes('ClipDrop')) {
+        const userResponse = confirm("⚠️ API ClipDrop no disponible\n\nLa herramienta continuará funcionando en modo simulación.\n¿Desea continuar?");
+        if (!userResponse) {
+          throw new Error("Proceso cancelado por el usuario");
+        }
+        // Continuar con la simulación (el servidor ya lo hace automáticamente)
+      } else {
+        throw new Error(errorData.error || `Error del servidor: ${res.status}`);
+      }
     }
     
     const result = await res.json();
@@ -94,7 +154,10 @@ form.addEventListener("submit", async (e) => {
       zoom.value = 100;
       drawProcessedImage();
       
-      console.log("📊 Imagen lista para Jumpseller:", result.detalles);
+      // AJUSTE 5: Mostrar datos técnicos procesados
+      showProcessedTechData(result.detalles);
+      
+      console.log("📊 Procesamiento completado:", result.detalles);
       
       originalButton.textContent = 'Reprocesar imagen';
       originalButton.disabled = false;
@@ -102,7 +165,12 @@ form.addEventListener("submit", async (e) => {
     
   } catch (error) {
     console.error("Error:", error);
-    alert("Error al procesar la imagen: " + error.message);
+    
+    // No mostrar alerta si fue cancelación del usuario
+    if (!error.message.includes("cancelado")) {
+      alert("Error al procesar la imagen: " + error.message);
+    }
+    
     originalButton.textContent = 'Procesar imagen';
     originalButton.disabled = false;
   }
@@ -141,6 +209,7 @@ downloadBtn.addEventListener("click", () => {
   }
   
   const formatNames = {
+    proportion65: "6-5",
     square: "cuadrado",
     portrait: "retrato", 
     landscape: "apaisado",
@@ -148,7 +217,7 @@ downloadBtn.addEventListener("click", () => {
   };
   
   const link = document.createElement("a");
-  link.download = `jumpseller_${formatNames[imageFormatSelect.value]}.png`;
+  link.download = `normalizada_${formatNames[imageFormatSelect.value]}.png`;
   link.href = canvas.toDataURL("image/png");
   link.click();
 });
