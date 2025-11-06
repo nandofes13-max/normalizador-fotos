@@ -1,52 +1,4 @@
-import express from "express";
-import cors from "cors";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
-import sharp from "sharp";
-
-const app = express();
-const port = process.env.PORT || 10000;
-const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY;
-
-console.log("🔑 CLIPDROP_API_KEY detectada:", CLIPDROP_API_KEY ? "OK ✅" : "NO ❌");
-
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.static("public"));
-
-const upload = multer({ 
-  dest: "uploads/",
-  limits: {
-    fileSize: 10 * 1024 * 1024
-  }
-});
-
-app.get("/", (req, res) => {
-  res.sendFile(path.resolve("public/index.html"));
-});
-
-// ✅ FUNCIÓN PARA SIMULAR REMOCIÓN DE FONDO (FALLBACK)
-async function simulateBackgroundRemoval(imagePath) {
-  console.log("🔄 Usando simulación de remoción de fondo...");
-  
-  // Crear un efecto de "recorte aproximado" con Sharp
-  const { data, info } = await sharp(imagePath)
-    .resize(800, 800, { fit: 'inside' })
-    .extend({
-      top: 20,
-      bottom: 20,
-      left: 20,
-      right: 20,
-      background: { r: 255, g: 255, b: 255, alpha: 0 }
-    })
-    .png()
-    .toBuffer({ resolveWithObject: true });
-    
-  console.log("🎭 Fondo simulado creado");
-  return { data, info };
-}
-
+// EN LA SECCIÓN DE PROCESAMIENTO, REEMPLAZAR ESTO:
 app.post("/procesar", upload.single("imagen"), async (req, res) => {
   const imagen = req.file;
   const imageFormat = req.body.imageFormat;
@@ -67,6 +19,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
   try {
     let resultData, resultInfo;
     let usedClipDrop = false;
+    let clipdropFailed = false;
 
     // INTENTAR CON CLIPDROP PRIMERO
     try {
@@ -106,6 +59,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       }
     } catch (clipdropError) {
       console.log("⚠️ ClipDrop falló, usando simulación:", clipdropError.message);
+      clipdropFailed = true;
       
       // USAR SIMULACIÓN COMO FALLBACK
       const simulated = await simulateBackgroundRemoval(imagen.path);
@@ -116,14 +70,14 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     console.log(`✂️ Imagen procesada: ${resultInfo.width}x${resultInfo.height}`);
     console.log(`🎯 Método usado: ${usedClipDrop ? 'ClipDrop' : 'Simulación'}`);
 
-    // En la sección de DIMENSIONES ESTÁNDAR, agregar:
-const jumpsellerFormats = {
-  proportion65: { width: 1200, height: 1000, label: "Proporción 6:5" },
-  square:       { width: 527, height: 527, label: "Cuadrado 1:1" },
-  portrait:     { width: 527, height: 702, label: "Retrato 3:4" },
-  landscape:    { width: 527, height: 296, label: "Apaisado 16:9" },
-  rectangular:  { width: 527, height: 395, label: "Rectangular 4:3" }
-};
+    // DIMENSIONES ESTÁNDAR JUMPSELLER
+    const jumpsellerFormats = {
+      proportion65: { width: 1200, height: 1000, label: "Proporción 6:5" },
+      square:       { width: 527, height: 527, label: "Cuadrado 1:1" },
+      portrait:     { width: 527, height: 702, label: "Retrato 3:4" },
+      landscape:    { width: 527, height: 296, label: "Apaisado 16:9" },
+      rectangular:  { width: 527, height: 395, label: "Rectangular 4:3" }
+    };
 
     const format = jumpsellerFormats[imageFormat];
     if (!format) {
@@ -193,6 +147,7 @@ const jumpsellerFormats = {
 
     console.log("🎉 Imagen lista para Jumpseller");
 
+    // ✅ ENVIAR INFORMACIÓN SOBRE EL FALLO DE CLIPDROP AL FRONTEND
     res.json({
       success: true,
       original: `/uploads/${path.basename(originalPath)}`,
@@ -204,7 +159,10 @@ const jumpsellerFormats = {
         productoTamaño: `${productWidth}x${productHeight}px`,
         escala: `${(scale * 100).toFixed(1)}%`,
         metodo: usedClipDrop ? 'ClipDrop' : 'Simulación'
-      }
+      },
+      // ✅ NUEVO CAMPO: Informar si ClipDrop falló
+      clipdropStatus: usedClipDrop ? 'success' : 'failed',
+      clipdropMessage: usedClipDrop ? 'API ClipDrop funcionando correctamente' : 'API ClipDrop no disponible - Usando simulación'
     });
 
   } catch (err) {
@@ -219,15 +177,4 @@ const jumpsellerFormats = {
       detalle: err.message 
     });
   }
-});
-
-// Servir imágenes temporales
-app.use("/uploads", express.static("uploads"));
-
-if (!fs.existsSync("uploads")) {
-  fs.mkdirSync("uploads");
-}
-
-app.listen(port, () => {
-  console.log(`🚀 Servidor escuchando en puerto ${port}`);
 });
