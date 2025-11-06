@@ -3,20 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Normalizador de Fotos para Jumpseller</title>
+  <title>Normalizador de Fotos</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
-    <h1>🛍️ Normalizador para Jumpseller</h1>
+    <h1>🧴 Normalizador de Fotos</h1>
     
     <form id="uploadForm">
       <input type="file" id="imageInput" name="image" accept="image/*" required>
       
-      <!-- SELECTOR DE FORMATO JUMPSELLER -->
+      <!-- SELECTOR DE FORMATO ACTUALIZADO -->
       <div class="format-selector">
-        <label>Formato Jumpseller:</label>
+        <label>Formato Imagen:</label>
         <select id="imageFormat" name="imageFormat" required>
+          <option value="proportion65">Proporción 6:5 (1200×1000px)</option>
           <option value="square">Cuadrado 1:1 (527×527px)</option>
           <option value="portrait">Retrato 3:4 (527×702px)</option>
           <option value="landscape">Apaisado 16:9 (527×296px)</option>
@@ -32,14 +33,29 @@
         <div>
           <h3>Original</h3>
           <img id="original" src="" alt="Original">
+          <!-- DATOS TÉCNICOS ORIGINAL -->
+          <div id="original-tech" class="tech-data hidden">
+            <h4>Datos Técnicos:</h4>
+            <p id="original-canvas-size"></p>
+            <p id="original-background"></p>
+            <p id="original-product-size"></p>
+          </div>
         </div>
         <div>
-          <h3>Procesada para Jumpseller</h3>
-          <canvas id="canvas" width="527" height="527"></canvas>
+          <h3>Procesada</h3>
+          <canvas id="canvas" width="1200" height="1000"></canvas>
+          <!-- DATOS TÉCNICOS PROCESADA -->
+          <div id="processed-tech" class="tech-data hidden">
+            <h4>Datos Técnicos:</h4>
+            <p id="processed-canvas-size"></p>
+            <p id="processed-background"></p>
+            <p id="processed-product-size"></p>
+            <p id="processed-scale"></p>
+          </div>
           <div class="controls">
             <label>Ajuste fino: </label>
             <input type="range" id="zoom" min="80" max="120" value="100">
-            <button id="downloadBtn">📥 Descargar para Jumpseller</button>
+            <button id="downloadBtn">📥 Descargar Imagen</button>
           </div>
         </div>
       </div>
