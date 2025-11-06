@@ -1,4 +1,52 @@
-// EN LA SECCIÓN DE PROCESAMIENTO, REEMPLAZAR ESTO:
+import express from "express";
+import cors from "cors";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import sharp from "sharp";
+
+const app = express();
+const port = process.env.PORT || 10000;
+const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY;
+
+console.log("🔑 CLIPDROP_API_KEY detectada:", CLIPDROP_API_KEY ? "OK ✅" : "NO ❌");
+
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.static("public"));
+
+const upload = multer({ 
+  dest: "uploads/",
+  limits: {
+    fileSize: 10 * 1024 * 1024
+  }
+});
+
+app.get("/", (req, res) => {
+  res.sendFile(path.resolve("public/index.html"));
+});
+
+// ✅ FUNCIÓN PARA SIMULAR REMOCIÓN DE FONDO (FALLBACK)
+async function simulateBackgroundRemoval(imagePath) {
+  console.log("🔄 Usando simulación de remoción de fondo...");
+  
+  // Crear un efecto de "recorte aproximado" con Sharp
+  const { data, info } = await sharp(imagePath)
+    .resize(800, 800, { fit: 'inside' })
+    .extend({
+      top: 20,
+      bottom: 20,
+      left: 20,
+      right: 20,
+      background: { r: 255, g: 255, b: 255, alpha: 0 }
+    })
+    .png()
+    .toBuffer({ resolveWithObject: true });
+    
+  console.log("🎭 Fondo simulado creado");
+  return { data, info };
+}
+
 app.post("/procesar", upload.single("imagen"), async (req, res) => {
   const imagen = req.file;
   const imageFormat = req.body.imageFormat;
@@ -9,12 +57,12 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
   }
 
   if (!imageFormat) {
-    console.error("❌ No se especificó el formato Jumpseller");
-    return res.status(400).json({ error: "Seleccione el formato Jumpseller" });
+    console.error("❌ No se especificó el formato");
+    return res.status(400).json({ error: "Seleccione el formato de imagen" });
   }
 
   console.log("📸 Imagen recibida:", imagen.originalname);
-  console.log("🛍️ Formato Jumpseller:", imageFormat);
+  console.log("🛍️ Formato:", imageFormat);
 
   try {
     let resultData, resultInfo;
@@ -70,8 +118,8 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     console.log(`✂️ Imagen procesada: ${resultInfo.width}x${resultInfo.height}`);
     console.log(`🎯 Método usado: ${usedClipDrop ? 'ClipDrop' : 'Simulación'}`);
 
-    // DIMENSIONES ESTÁNDAR JUMPSELLER
-    const jumpsellerFormats = {
+    // DIMENSIONES ESTÁNDAR
+    const imageFormats = {
       proportion65: { width: 1200, height: 1000, label: "Proporción 6:5" },
       square:       { width: 527, height: 527, label: "Cuadrado 1:1" },
       portrait:     { width: 527, height: 702, label: "Retrato 3:4" },
@@ -79,9 +127,9 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       rectangular:  { width: 527, height: 395, label: "Rectangular 4:3" }
     };
 
-    const format = jumpsellerFormats[imageFormat];
+    const format = imageFormats[imageFormat];
     if (!format) {
-      throw new Error(`Formato Jumpseller no válido: ${imageFormat}`);
+      throw new Error(`Formato no válido: ${imageFormat}`);
     }
 
     console.log(`🎯 Formato: ${format.label} (${format.width}x${format.height}px)`);
@@ -105,7 +153,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     console.log(`📐 Escala aplicada: ${(scale * 100).toFixed(1)}%`);
     console.log(`📐 Tamaño producto: ${productWidth}x${productHeight}px`);
 
-    // CREAR IMAGEN FINAL CON DIMENSIONES JUMPSELLER
+    // CREAR IMAGEN FINAL CON DIMENSIONES ESTÁNDAR
     const finalImageBuffer = await sharp({
       create: {
         width: format.width,
@@ -133,7 +181,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     // GUARDAR RESULTADOS
     const timestamp = Date.now();
     const originalPath = path.join("uploads", `original_${timestamp}.jpg`);
-    const processedPath = path.join("uploads", `jumpseller_${timestamp}.png`);
+    const processedPath = path.join("uploads", `procesada_${timestamp}.png`);
 
     // Guardar original preprocesada
     const originalBuffer = await sharp(imagen.path)
@@ -145,7 +193,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     fs.writeFileSync(processedPath, finalImageBuffer);
     fs.unlinkSync(imagen.path);
 
-    console.log("🎉 Imagen lista para Jumpseller");
+    console.log("🎉 Imagen lista");
 
     // ✅ ENVIAR INFORMACIÓN SOBRE EL FALLO DE CLIPDROP AL FRONTEND
     res.json({
@@ -177,4 +225,15 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       detalle: err.message 
     });
   }
+});
+
+// Servir imágenes temporales
+app.use("/uploads", express.static("uploads"));
+
+if (!fs.existsSync("uploads")) {
+  fs.mkdirSync("uploads");
+}
+
+app.listen(port, () => {
+  console.log(`🚀 Servidor escuchando en puerto ${port}`);
 });
