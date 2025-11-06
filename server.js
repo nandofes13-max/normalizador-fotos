@@ -116,13 +116,14 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     console.log(`✂️ Imagen procesada: ${resultInfo.width}x${resultInfo.height}`);
     console.log(`🎯 Método usado: ${usedClipDrop ? 'ClipDrop' : 'Simulación'}`);
 
-    // DIMENSIONES ESTÁNDAR JUMPSELLER
-    const jumpsellerFormats = {
-      square:       { width: 527, height: 527, label: "Cuadrado 1:1" },
-      portrait:     { width: 527, height: 702, label: "Retrato 3:4" },
-      landscape:    { width: 527, height: 296, label: "Apaisado 16:9" },
-      rectangular:  { width: 527, height: 395, label: "Rectangular 4:3" }
-    };
+    // En la sección de DIMENSIONES ESTÁNDAR, agregar:
+const jumpsellerFormats = {
+  proportion65: { width: 1200, height: 1000, label: "Proporción 6:5" },
+  square:       { width: 527, height: 527, label: "Cuadrado 1:1" },
+  portrait:     { width: 527, height: 702, label: "Retrato 3:4" },
+  landscape:    { width: 527, height: 296, label: "Apaisado 16:9" },
+  rectangular:  { width: 527, height: 395, label: "Rectangular 4:3" }
+};
 
     const format = jumpsellerFormats[imageFormat];
     if (!format) {
