@@ -126,23 +126,18 @@ form.addEventListener("submit", async (e) => {
     
     if (!res.ok) {
       const errorData = await res.json();
-      
-      // AJUSTE 4: Mostrar alerta si falla ClipDrop pero continuar
-      if (errorData.detalle && errorData.detalle.includes('ClipDrop')) {
-        const userResponse = confirm("⚠️ API ClipDrop no disponible\n\nLa herramienta continuará funcionando en modo simulación.\n¿Desea continuar?");
-        if (!userResponse) {
-          throw new Error("Proceso cancelado por el usuario");
-        }
-        // Continuar con la simulación (el servidor ya lo hace automáticamente)
-      } else {
-        throw new Error(errorData.error || `Error del servidor: ${res.status}`);
-      }
+      throw new Error(errorData.error || `Error del servidor: ${res.status}`);
     }
     
     const result = await res.json();
     
     if (!result.success) {
       throw new Error(result.error || "Error desconocido");
+    }
+
+    // ✅ AJUSTE 4: MOSTRAR CARTEL SI CLIPDROP FALLÓ
+    if (result.clipdropStatus === 'failed') {
+      alert("⚠️ " + result.clipdropMessage + "\n\nLa herramienta continuará funcionando en modo simulación.");
     }
 
     // Cargar la imagen procesada
@@ -165,12 +160,7 @@ form.addEventListener("submit", async (e) => {
     
   } catch (error) {
     console.error("Error:", error);
-    
-    // No mostrar alerta si fue cancelación del usuario
-    if (!error.message.includes("cancelado")) {
-      alert("Error al procesar la imagen: " + error.message);
-    }
-    
+    alert("Error al procesar la imagen: " + error.message);
     originalButton.textContent = 'Procesar imagen';
     originalButton.disabled = false;
   }
