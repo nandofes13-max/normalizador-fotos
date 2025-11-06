@@ -41,23 +41,56 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
   }
 
   console.log("📸 Imagen recibida:", imagen.originalname);
+  console.log("📊 Tamaño archivo:", (imagen.size / 1024).toFixed(2), "KB");
   console.log("🛍️ Formato Jumpseller:", imageFormat);
 
   try {
+    // ✅ PREPROCESAR IMAGEN PARA CLIPDROP
+    console.log("🔄 Preprocesando imagen para ClipDrop...");
+    
+    const preprocessedImage = await sharp(imagen.path)
+      .resize(2000, 2000, {
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .jpeg({ 
+        quality: 90,
+        mozjpeg: true 
+      })
+      .toBuffer();
+
+    console.log("📊 Imagen preprocesada:", (preprocessedImage.length / 1024).toFixed(2), "KB");
+
     // ENVIAR A CLIPDROP
-    const imageBuffer = fs.readFileSync(imagen.path);
+    console.log("🧩 Enviando a ClipDrop API...");
+    
     const response = await fetch("https://clipdrop-api.co/remove-background/v1", {
       method: "POST",
       headers: {
         "x-api-key": CLIPDROP_API_KEY,
+        "Content-Type": "image/jpeg"
       },
-      body: imageBuffer,
+      body: preprocessedImage,
     });
+
+    console.log("📡 Status respuesta ClipDrop:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`⚠️ Error ClipDrop API: ${response.status} ${errorText}`);
+      
+      // Limpiar archivo temporal
       fs.unlinkSync(imagen.path);
+      
+      // Mensajes específicos según el error
+      if (response.status === 500) {
+        return res.status(500).json({ 
+          error: "Error interno del servicio de procesamiento", 
+          detalle: "El servicio de remoción de fondos no está disponible temporalmente",
+          sugerencia: "Intente con otra imagen o vuelva a intentar en unos minutos"
+        });
+      }
+      
       return res.status(response.status).json({ 
         error: "Error procesando imagen", 
         detalle: `ClipDrop API: ${response.status} - ${errorText}` 
@@ -66,6 +99,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     const buffer = await response.arrayBuffer();
     console.log("✅ Fondo removido correctamente.");
+    console.log("📊 Tamaño resultado:", (buffer.byteLength / 1024).toFixed(2), "KB");
 
     // PROCESAR CON SHARP
     const { data, info } = await sharp(Buffer.from(buffer))
@@ -91,7 +125,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     console.log(`🎯 Formato: ${format.label} (${format.width}x${format.height}px)`);
 
     // CALCULAR ESCALA PARA AJUSTAR AL FORMATO SELECCIONADO
-    const margin = 0.1; // 10% de margen
+    const margin = 0.1;
     const availableWidth = format.width * (1 - margin);
     const availableHeight = format.height * (1 - margin);
 
@@ -109,7 +143,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     console.log(`📐 Escala aplicada: ${(scale * 100).toFixed(1)}%`);
     console.log(`📐 Tamaño producto: ${productWidth}x${productHeight}px`);
 
-    // CREAR IMAGEN FINAL CON DIMENSIONES JUMPSELLER
+    // CREAR IMAGEN FINAL
     const finalImageBuffer = await sharp({
       create: {
         width: format.width,
@@ -139,7 +173,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const originalPath = path.join("uploads", `original_${timestamp}.jpg`);
     const processedPath = path.join("uploads", `jumpseller_${timestamp}.png`);
 
-    fs.copyFileSync(imagen.path, originalPath);
+    fs.writeFileSync(originalPath, preprocessedImage);
     fs.writeFileSync(processedPath, finalImageBuffer);
     fs.unlinkSync(imagen.path);
 
