@@ -23,7 +23,7 @@ app.get("/", (req, res) => {
   res.sendFile(path.resolve("public/index.html"));
 });
 
-// ✅ ALGORITMO MEJORADO: Detección REAL por análisis de color
+// ✅ VERSIÓN CORREGIDA: Detección sin problemas de buffer
 async function detectAndCropProduct(imagePath) {
   console.log("🔍 Ejecutando detección automática de producto...");
   
@@ -34,8 +34,17 @@ async function detectAndCropProduct(imagePath) {
     
     console.log(`📐 Imagen original: ${metadata.width}x${metadata.height}px`);
 
-    // Convertir a RGB para análisis de color
-    const { data, info } = await image
+    // ESTRATEGIA MEJORADA: Usar JPEG temporal para evitar problemas RAW
+    const tempImagePath = path.join("uploads", `temp_analysis_${Date.now()}.jpg`);
+    
+    // Convertir a RGB y guardar temporalmente
+    await image
+      .jpeg({ quality: 95 })
+      .toFile(tempImagePath);
+
+    // Analizar la imagen temporal
+    const tempImage = sharp(tempImagePath);
+    const { data, info } = await tempImage
       .ensureAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
@@ -50,25 +59,37 @@ async function detectAndCropProduct(imagePath) {
     console.log(`📦 Producto detectado: [${productBounds.x}, ${productBounds.y}] - [${productBounds.x2}, ${productBounds.y2}]`);
     console.log(`📦 Dimensiones producto: ${productBounds.width}x${productBounds.height}px`);
 
-    // Recortar el producto detectado
-    const croppedImage = await sharp(imagePath)
+    // Recortar el producto detectado DESDE EL ORIGINAL (no del buffer)
+    const croppedBuffer = await sharp(imagePath)
       .extract({
         left: productBounds.x,
         top: productBounds.y,
         width: productBounds.width,
         height: productBounds.height
       })
-      .toBuffer({ resolveWithObject: true });
+      .png()
+      .toBuffer();
+
+    // Limpiar archivo temporal
+    fs.unlinkSync(tempImagePath);
 
     return {
-      data: croppedImage.data,
-      info: croppedImage.info,
+      croppedBuffer: croppedBuffer,
       productBounds: productBounds,
-      backgroundColor: backgroundColor
+      backgroundColor: backgroundColor,
+      originalWidth: metadata.width,
+      originalHeight: metadata.height
     };
     
   } catch (error) {
     console.error("❌ Error en detección de producto:", error);
+    
+    // Limpiar archivos temporales en caso de error
+    const tempFiles = fs.readdirSync("uploads").filter(file => file.startsWith("temp_analysis_"));
+    tempFiles.forEach(file => {
+      try { fs.unlinkSync(path.join("uploads", file)); } catch(e) {}
+    });
+    
     throw error;
   }
 }
@@ -225,8 +246,8 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     // ✅ PASO 1: DETECTAR Y ANALIZAR PRODUCTO EN ORIGINAL
     const detectionResult = await detectAndCropProduct(imagen.path);
     const originalMetrics = calculateOriginalMetrics(
-      detectionResult.info.width + detectionResult.productBounds.x * 2, // Estimado
-      detectionResult.info.height + detectionResult.productBounds.y * 2,
+      detectionResult.originalWidth,
+      detectionResult.originalHeight,
       detectionResult.productBounds
     );
     
@@ -253,77 +274,60 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const availableWidth = format.width * (1 - margin);
     const availableHeight = format.height * (1 - margin);
 
-    const scaleX = availableWidth / detectionResult.info.width;
-    const scaleY = availableHeight / detectionResult.info.height;
+    const scaleX = availableWidth / detectionResult.productBounds.width;
+    const scaleY = availableHeight / detectionResult.productBounds.height;
     
     const scale = Math.min(scaleX, scaleY);
 
-    const productWidth = Math.round(detectionResult.info.width * scale);
-    const productHeight = Math.round(detectionResult.info.height * scale);
+    const productWidth = Math.round(detectionResult.productBounds.width * scale);
+    const productHeight = Math.round(detectionResult.productBounds.height * scale);
     const productX = Math.round((format.width - productWidth) / 2);
     const productY = Math.round((format.height - productHeight) / 2);
 
-    console.log(`📐 Producto detectado: ${detectionResult.info.width}x${detectionResult.info.height}`);
+    console.log(`📐 Producto detectado: ${detectionResult.productBounds.width}x${detectionResult.productBounds.height}`);
     console.log(`📐 Escala aplicada: ${(scale * 100).toFixed(1)}%`);
     console.log(`📐 Tamaño normalizado: ${productWidth}x${productHeight}px`);
 
-       // ✅ PASO 4: VERSIÓN ROBUSTA CON VALIDACIONES
+    // ✅ PASO 4: VERSIÓN SIMPLIFICADA Y SEGURA
     
-    // Validar dimensiones antes de procesar
-    if (productWidth <= 0 || productHeight <= 0) {
+    console.log(`🔧 Procesando con dimensiones: ${productWidth}x${productHeight}`);
+
+    // Validar dimensiones
+    if (productWidth <= 0 || productHeight <= 0 || productWidth > 5000 || productHeight > 5000) {
       throw new Error(`Dimensiones inválidas: ${productWidth}x${productHeight}`);
     }
 
-    if (productWidth > 5000 || productHeight > 5000) {
-      throw new Error(`Dimensiones demasiado grandes: ${productWidth}x${productHeight}`);
-    }
-
-    console.log(`🔧 Procesando con dimensiones: ${productWidth}x${productHeight}`);
-
-    try {
-      // Procesar en dos pasos separados
-      const resizedProduct = await sharp(detectionResult.data, {
-        raw: {
-          width: detectionResult.info.width,
-          height: detectionResult.info.height,
-          channels: 4
-        }
-      })
-      .resize({
-        width: Math.max(1, Math.round(productWidth)),
-        height: Math.max(1, Math.round(productHeight)),
+    // SOLUCIÓN DIRECTA: Redimensionar el buffer recortado directamente
+    const resizedProductBuffer = await sharp(detectionResult.croppedBuffer)
+      .resize(Math.round(productWidth), Math.round(productHeight), {
         fit: 'contain',
-        background: { r: 0, g: 0, b: 0, alpha: 0 }
+        background: { r: 255, g: 255, b: 255 } // Fondo blanco para mantener proporción
       })
       .png()
       .toBuffer();
 
-      const finalImageBuffer = await sharp({
-        create: {
-          width: format.width,
-          height: format.height,
-          channels: 3,
-          background: { r: 255, g: 255, b: 255 }
-        }
-      })
-      .png()
-      .composite([
-        {
-          input: resizedProduct,
-          top: Math.max(0, Math.round(productY)),
-          left: Math.max(0, Math.round(productX))
-        }
-      ])
-      .png()
-      .toBuffer();
+    // Crear imagen final con el producto redimensionado centrado
+    const finalImageBuffer = await sharp({
+      create: {
+        width: format.width,
+        height: format.height,
+        channels: 3,
+        background: { r: 255, g: 255, b: 255 }
+      }
+    })
+    .png()
+    .composite([
+      {
+        input: resizedProductBuffer,
+        top: Math.round(productY),
+        left: Math.round(productX)
+      }
+    ])
+    .png()
+    .toBuffer();
 
-      console.log("✅ Imagen procesada correctamente");
+    console.log("✅ Imagen procesada correctamente");
 
-    } catch (sharpError) {
-      console.error("❌ Error en Sharp:", sharpError);
-      throw new Error(`Error al procesar imagen: ${sharpError.message}`);
-    }
-    
     // ✅ PASO 5: GUARDAR RESULTADOS
     const timestamp = Date.now();
     const originalPath = path.join("uploads", `original_${timestamp}.jpg`);
