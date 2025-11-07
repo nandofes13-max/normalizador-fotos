@@ -134,12 +134,91 @@ button:disabled {
   object-fit: contain;
 }
 
+/* ESTILOS MEJORADOS PARA DATOS TÉCNICOS */
+.tech-data {
+  margin-top: 20px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 10px;
+  border: 2px solid #dee2e6;
+  text-align: left;
+}
+
+.tech-data h4 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+  border-bottom: 3px solid #007bff;
+  padding-bottom: 8px;
+  font-size: 1.1em;
+  font-weight: bold;
+}
+
+.tech-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+  padding: 6px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.tech-row:last-child {
+  border-bottom: none;
+}
+
+.tech-label {
+  font-weight: 600;
+  color: #495057;
+  font-size: 0.95em;
+  min-width: 80px;
+}
+
+.tech-value {
+  font-weight: bold;
+  color: #007bff;
+  font-size: 0.95em;
+  background: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  min-width: 120px;
+  text-align: center;
+}
+
+/* Estilos específicos para datos originales vs procesados */
+#original-tech {
+  border-left: 4px solid #28a745;
+}
+
+#original-tech h4 {
+  border-bottom-color: #28a745;
+}
+
+#original-tech .tech-value {
+  color: #28a745;
+  background: #f8fff9;
+}
+
+#processed-tech {
+  border-left: 4px solid #dc3545;
+}
+
+#processed-tech h4 {
+  border-bottom-color: #dc3545;
+}
+
+#processed-tech .tech-value {
+  color: #dc3545;
+  background: #fff5f5;
+}
+
 .controls {
   margin-top: 20px;
   padding: 20px;
   background: #f8f9fa;
   border-radius: 8px;
   border: 1px solid #e9ecef;
+  text-align: center;
 }
 
 .controls label {
@@ -151,8 +230,8 @@ button:disabled {
 }
 
 .controls input[type="range"] {
-  width: 250px;
-  margin: 0 15px;
+  width: 200px;
+  margin: 0 10px;
 }
 
 .zoom-value {
@@ -161,6 +240,10 @@ button:disabled {
   text-align: center;
   font-weight: bold;
   color: #007bff;
+  background: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
 }
 
 #downloadBtn {
@@ -170,34 +253,6 @@ button:disabled {
 
 #downloadBtn:hover {
   background: #218838;
-}
-
-/* Estilos para datos técnicos */
-.tech-data {
-  margin-top: 15px;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
-  text-align: left;
-}
-
-.tech-data h4 {
-  margin: 0 0 10px 0;
-  color: #333;
-  border-bottom: 2px solid #007bff;
-  padding-bottom: 5px;
-  font-size: 1.1em;
-}
-
-.tech-data p {
-  margin: 5px 0;
-  font-size: 0.9em;
-  color: #555;
-}
-
-.tech-data.hidden {
-  display: none;
 }
 
 /* Responsive */
@@ -219,6 +274,22 @@ button:disabled {
   input[type="file"],
   .format-selector select {
     width: 95%;
+  }
+  
+  .tech-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .tech-value {
+    min-width: auto;
+    width: 100%;
+    text-align: left;
+  }
+  
+  .controls input[type="range"] {
+    width: 150px;
   }
 }
 
@@ -244,4 +315,14 @@ button:disabled {
   border-radius: 5px;
   margin: 10px 0;
   border: 1px solid #f5c6cb;
+}
+
+/* Animaciones suaves */
+.tech-data, .preview > div {
+  transition: all 0.3s ease;
+}
+
+.tech-data:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
