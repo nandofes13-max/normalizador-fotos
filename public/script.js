@@ -5,24 +5,31 @@ const previewContainer = document.getElementById("preview-container");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const zoom = document.getElementById("zoom");
+const zoomValue = document.getElementById("zoomValue");
 const downloadBtn = document.getElementById("downloadBtn");
 const originalImgElement = document.getElementById("original");
 
-// Elementos para datos técnicos
+// Elementos para datos técnicos ORIGINALES
 const originalTech = document.getElementById("original-tech");
 const originalCanvasSize = document.getElementById("original-canvas-size");
-const originalBackground = document.getElementById("original-background");
 const originalProductSize = document.getElementById("original-product-size");
+const originalMargin = document.getElementById("original-margin");
+const originalBackground = document.getElementById("original-background");
+const originalScale = document.getElementById("original-scale");
+
+// Elementos para datos técnicos PROCESADOS
 const processedTech = document.getElementById("processed-tech");
 const processedCanvasSize = document.getElementById("processed-canvas-size");
-const processedBackground = document.getElementById("processed-background");
 const processedProductSize = document.getElementById("processed-product-size");
+const processedMargin = document.getElementById("processed-margin");
+const processedBackground = document.getElementById("processed-background");
 const processedScale = document.getElementById("processed-scale");
 
 let processedImage = null;
 let currentScale = 1;
 let currentImageFile = null;
 let currentImageInfo = null;
+let currentTechData = null;
 
 // ACTUALIZAR TAMAÑO DEL CANVAS SEGÚN FORMATO
 function updateCanvasSize() {
@@ -50,6 +57,17 @@ function updateCanvasSize() {
 // ACTUALIZAR CANVAS CUANDO CAMBIA EL FORMATO
 imageFormatSelect.addEventListener("change", updateCanvasSize);
 
+// ACTUALIZAR VALOR DEL ZOOM EN TIEMPO REAL
+zoom.addEventListener("input", () => {
+  currentScale = zoom.value / 100;
+  zoomValue.textContent = `${zoom.value}%`;
+  
+  if (processedImage) {
+    drawProcessedImage();
+    updateProcessedTechDataWithZoom();
+  }
+});
+
 // MOSTRAR IMAGEN ORIGINAL AL SUBIRLA
 imageInput.addEventListener("change", (e) => {
   const file = e.target.files[0];
@@ -61,42 +79,80 @@ imageInput.addEventListener("change", (e) => {
   reader.onload = (event) => {
     originalImgElement.src = event.target.result;
     
-    // Obtener información de la imagen original
+    // Obtener información básica de la imagen original
     const img = new Image();
     img.onload = function() {
       currentImageInfo = {
         width: this.width,
         height: this.height
       };
-      showOriginalTechData();
+      // Mostrar datos técnicos básicos mientras se procesa
+      showBasicOriginalTechData();
     };
     img.src = event.target.result;
     
     previewContainer.classList.remove("hidden");
     originalTech.classList.remove("hidden");
+    processedTech.classList.add("hidden"); // Ocultar datos procesados hasta que se procese
   };
   reader.readAsDataURL(file);
 });
 
-// MOSTRAR DATOS TÉCNICOS ORIGINALES
-function showOriginalTechData() {
+// MOSTRAR DATOS TÉCNICOS BÁSICOS DE LA ORIGINAL
+function showBasicOriginalTechData() {
   if (!currentImageInfo) return;
   
-  originalCanvasSize.textContent = `Tamaño del lienzo: ${currentImageInfo.width} × ${currentImageInfo.height} px`;
-  originalBackground.textContent = `Fondo: Original de la imagen`;
-  originalProductSize.textContent = `Tamaño del producto: ${currentImageInfo.width} × ${currentImageInfo.height} px`;
+  originalCanvasSize.textContent = `${currentImageInfo.width} × ${currentImageInfo.height} px`;
+  originalProductSize.textContent = `${currentImageInfo.width} × ${currentImageInfo.height} px`;
+  originalMargin.textContent = `0 px`;
+  originalBackground.textContent = `Original`;
+  originalScale.textContent = `100%`;
+}
+
+// MOSTRAR DATOS TÉCNICOS ORIGINALES DEL SERVIDOR
+function showOriginalTechData(techData) {
+  if (!techData) return;
+  
+  originalCanvasSize.textContent = techData.originalCanvas;
+  originalProductSize.textContent = techData.originalProduct;
+  originalMargin.textContent = techData.originalMargin;
+  originalBackground.textContent = techData.originalBackground;
+  originalScale.textContent = techData.originalScale;
+  
+  originalTech.classList.remove("hidden");
 }
 
 // MOSTRAR DATOS TÉCNICOS PROCESADOS
-function showProcessedTechData(detalles) {
-  if (!detalles) return;
+function showProcessedTechData(techData) {
+  if (!techData) return;
   
-  processedCanvasSize.textContent = `Tamaño del lienzo: ${detalles.dimensiones}`;
-  processedBackground.textContent = `Fondo: Blanco`;
-  processedProductSize.textContent = `Tamaño del producto: ${detalles.productoTamaño}`;
-  processedScale.textContent = `Escala aplicada: ${detalles.escala}`;
+  currentTechData = techData; // Guardar para actualizaciones con zoom
+  
+  processedCanvasSize.textContent = techData.processedCanvas;
+  processedProductSize.textContent = techData.processedProduct;
+  processedMargin.textContent = techData.processedMargin;
+  processedBackground.textContent = techData.processedBackground;
+  processedScale.textContent = techData.processedScale;
   
   processedTech.classList.remove("hidden");
+}
+
+// ACTUALIZAR DATOS PROCESADOS CON ZOOM APLICADO
+function updateProcessedTechDataWithZoom() {
+  if (!currentTechData) return;
+  
+  // Extraer dimensiones base del producto
+  const baseSize = currentTechData.processedProduct.split(' × ');
+  const baseWidth = parseInt(baseSize[0]);
+  const baseHeight = parseInt(baseSize[1]);
+  
+  // Calcular nuevas dimensiones con zoom
+  const zoomedWidth = Math.round(baseWidth * currentScale);
+  const zoomedHeight = Math.round(baseHeight * currentScale);
+  
+  // Actualizar display
+  processedProductSize.textContent = `${zoomedWidth} × ${zoomedHeight} px`;
+  processedScale.textContent = `${(currentScale * 100).toFixed(1)}%`;
 }
 
 // PROCESAR IMAGEN
@@ -111,7 +167,7 @@ form.addEventListener("submit", async (e) => {
   }
 
   const originalButton = form.querySelector('button');
-  originalButton.textContent = 'Procesando...';
+  originalButton.textContent = 'Analizando y procesando...';
   originalButton.disabled = true;
 
   try {
@@ -135,11 +191,6 @@ form.addEventListener("submit", async (e) => {
       throw new Error(result.error || "Error desconocido");
     }
 
-    // ✅ AJUSTE 4: MOSTRAR CARTEL SI CLIPDROP FALLÓ
-    if (result.clipdropStatus === 'failed') {
-      alert("⚠️ " + result.clipdropMessage + "\n\nLa herramienta continuará funcionando en modo simulación.");
-    }
-
     // Cargar la imagen procesada
     const img = new Image();
     img.src = result.procesada;
@@ -147,12 +198,14 @@ form.addEventListener("submit", async (e) => {
       processedImage = img;
       currentScale = 1;
       zoom.value = 100;
+      zoomValue.textContent = "100%";
       drawProcessedImage();
       
-      // AJUSTE 5: Mostrar datos técnicos procesados
-      showProcessedTechData(result.detalles);
+      // Mostrar datos técnicos actualizados
+      showOriginalTechData(result.originalTech);
+      showProcessedTechData(result.processedTech);
       
-      console.log("📊 Procesamiento completado:", result.detalles);
+      console.log("🎉 Normalización completada:", result.detalles);
       
       originalButton.textContent = 'Reprocesar imagen';
       originalButton.disabled = false;
@@ -183,14 +236,6 @@ function drawProcessedImage() {
   ctx.drawImage(processedImage, x, y, w, h);
 }
 
-// CONTROL DE ZOOM (ajuste fino)
-zoom.addEventListener("input", () => {
-  currentScale = zoom.value / 100;
-  if (processedImage) {
-    drawProcessedImage();
-  }
-});
-
 // DESCARGAR IMAGEN
 downloadBtn.addEventListener("click", () => {
   if (!processedImage) {
@@ -216,6 +261,7 @@ downloadBtn.addEventListener("click", () => {
 function initialize() {
   currentScale = 1;
   zoom.value = 100;
-  updateCanvasSize(); // Establecer tamaño inicial del canvas
+  zoomValue.textContent = "100%";
+  updateCanvasSize();
 }
 initialize();
