@@ -39,9 +39,7 @@ async function detectAndCropProduct(imagePath) {
     // 2. Aplicar algoritmo para encontrar región de interés
     
     const { data, info } = await image
-      .grayscale() // Mejor detección de bordes
-      .normalise() // Mejorar contraste
-      .extract({
+        .extract({
         left: 0,
         top: 0,
         width: metadata.width,
@@ -125,7 +123,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     console.log(`🎯 Formato destino: ${format.label} (${format.width}x${format.height}px)`);
 
     // ✅ PASO 3: CALCULAR ESCALA PARA NORMALIZACIÓN
-    const margin = 0.1; // 10% de margen
+    const margin = 0; // 0% sin margen
     const availableWidth = format.width * (1 - margin);
     const availableHeight = format.height * (1 - margin);
 
