@@ -26,6 +26,7 @@ class ImageNormalizer {
 
         // Buttons
         document.getElementById('processBtn').addEventListener('click', () => this.processImage());
+        document.getElementById('processFromPreviewBtn').addEventListener('click', () => this.processImage());
         document.getElementById('reprocessBtn').addEventListener('click', () => this.reprocessImage());
         document.getElementById('downloadBtn').addEventListener('click', () => this.downloadImage());
 
@@ -72,7 +73,7 @@ class ImageNormalizer {
         }
 
         this.currentImage = file;
-        this.showLoading('Detectando producto...');
+        this.showLoading('🔍 Detectando producto y analizando imagen...');
 
         try {
             // Primero: detección automática para datos técnicos
@@ -80,16 +81,25 @@ class ImageNormalizer {
             this.originalTechData = detectionData;
             
             // Mostrar preview de la imagen original
-            await this.displayOriginalImage(file);
+            await this.displayOriginalImagePreview(file);
             
-            // Mostrar datos técnicos originales
-            this.displayOriginalTechSpecs(detectionData.originalTech);
+            // Mostrar datos técnicos originales EN EL PREVIEW
+            this.displayOriginalTechSpecsPreview(detectionData.originalTech);
+            
+            // Mostrar sección de preview
+            document.getElementById('previewSection').style.display = 'block';
             
             // Habilitar botón de procesar
             document.getElementById('processBtn').disabled = false;
+            document.getElementById('processFromPreviewBtn').disabled = false;
             
             this.hideLoading();
-            this.showSuccess('✅ Imagen cargada y analizada correctamente. Selecciona formato y haz clic en "Normalizar Imagen".');
+            this.showSuccess('✅ Imagen cargada y analizada correctamente. Los datos técnicos están listos.');
+
+            // Scroll al preview
+            document.getElementById('previewSection').scrollIntoView({ 
+                behavior: 'smooth' 
+            });
 
         } catch (error) {
             this.hideLoading();
@@ -114,10 +124,13 @@ class ImageNormalizer {
         return await response.json();
     }
 
-    async displayOriginalImage(file) {
+    async displayOriginalImagePreview(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
             reader.onload = (e) => {
+                // Actualizar imagen en el preview
+                document.getElementById('originalImagePreview').src = e.target.result;
+                // También actualizar imagen en la sección de resultados
                 document.getElementById('originalImage').src = e.target.result;
                 resolve();
             };
@@ -125,8 +138,8 @@ class ImageNormalizer {
         });
     }
 
-    displayOriginalTechSpecs(techData) {
-        const specsContainer = document.getElementById('originalSpecs');
+    displayOriginalTechSpecsPreview(techData) {
+        const specsContainer = document.getElementById('originalSpecsPreview');
         specsContainer.innerHTML = `
             <div class="spec-item">
                 <div class="spec-label">Lienzo Original</div>
@@ -149,6 +162,10 @@ class ImageNormalizer {
                 <div class="spec-value">${techData.originalScale}</div>
             </div>
         `;
+
+        // También actualizar la sección de resultados con los mismos datos
+        const resultsSpecsContainer = document.getElementById('originalSpecs');
+        resultsSpecsContainer.innerHTML = specsContainer.innerHTML;
     }
 
     selectFormat(e) {
@@ -175,7 +192,7 @@ class ImageNormalizer {
             return;
         }
 
-        this.showLoading('Normalizando imagen...');
+        this.showLoading('🔄 Normalizando imagen...');
 
         try {
             const result = await this.sendProcessRequest(this.currentScale);
@@ -195,13 +212,13 @@ class ImageNormalizer {
             return;
         }
 
-        this.showLoading('Reprocesando con nueva escala...');
+        this.showLoading('🔄 Reprocesando con nueva escala...');
 
         try {
             const result = await this.sendProcessRequest(this.currentScale);
             this.displayProcessedResult(result);
             this.hideLoading();
-            this.showSuccess('🔄 Imagen reprocesada correctamente!');
+            this.showSuccess('✅ Imagen reprocesada correctamente!');
 
         } catch (error) {
             this.hideLoading();
@@ -229,7 +246,8 @@ class ImageNormalizer {
     }
 
     displayProcessedResult(result) {
-        // Mostrar sección de resultados
+        // Ocultar preview y mostrar resultados
+        document.getElementById('previewSection').style.display = 'none';
         document.getElementById('resultsSection').style.display = 'block';
         
         // Mostrar imagen procesada
@@ -238,9 +256,6 @@ class ImageNormalizer {
         
         // Mostrar datos técnicos procesados
         this.displayProcessedTechSpecs(result.processedTech);
-        
-        // Mostrar detalles adicionales
-        this.displayAdditionalDetails(result.detalles);
         
         // Mostrar sección de ajuste fino
         document.getElementById('adjustmentSection').style.display = 'block';
@@ -286,11 +301,6 @@ class ImageNormalizer {
         `;
     }
 
-    displayAdditionalDetails(detalles) {
-        // Podemos expandir esto para mostrar más detalles si es necesario
-        console.log('Detalles del procesamiento:', detalles);
-    }
-
     downloadImage() {
         if (!this.currentProcessedImage) {
             this.showError('No hay imagen para descargar.');
@@ -311,6 +321,7 @@ class ImageNormalizer {
         loading.querySelector('p').textContent = message;
         
         document.getElementById('processBtn').disabled = true;
+        document.getElementById('processFromPreviewBtn').disabled = true;
         if (document.getElementById('reprocessBtn')) {
             document.getElementById('reprocessBtn').disabled = true;
         }
@@ -319,6 +330,7 @@ class ImageNormalizer {
     hideLoading() {
         document.getElementById('loading').style.display = 'none';
         document.getElementById('processBtn').disabled = false;
+        document.getElementById('processFromPreviewBtn').disabled = false;
         if (document.getElementById('reprocessBtn')) {
             document.getElementById('reprocessBtn').disabled = false;
         }
