@@ -1,22 +1,135 @@
-<!-- En la sección de Datos Técnicos Originales (preview-section) -->
-<div class="tech-specs">
-    <h3>📊 Datos Técnicos Originales (Detección Automática)</h3>
-    <div class="specs-grid" id="originalSpecsPreview">
-        <!-- Se llenará dinámicamente con márgenes individuales -->
-    </div>
-</div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Normalizador de Imágenes para E-commerce</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛍️ Normalizador de Imágenes</h1>
+            <p class="subtitle">Optimiza tus productos para e-commerce automáticamente</p>
+        </header>
 
-<!-- En la sección de Resultados (results-section) -->
-<div class="tech-specs" style="margin-top: 20px;">
-    <h4>📊 Datos Técnicos Originales</h4>
-    <div class="specs-grid" id="originalSpecs">
-        <!-- Mismos datos que el preview -->
-    </div>
-</div>
+        <section class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <h3>Arrastra tu imagen aquí o haz clic para seleccionar</h3>
+                <p>Formatos soportados: JPG, PNG, WEBP (Máx. 10MB)</p>
+                <input type="file" id="imageInput" accept="image/*" style="display: none;">
+            </div>
 
-<div class="tech-specs" style="margin-top: 20px;">
-    <h4>📈 Datos Técnicos Procesados</h4>
-    <div class="specs-grid" id="processedSpecs">
-        <!-- Se llenará con márgenes individuales del resultado -->
+            <div class="format-selector">
+                <h3>Selecciona el formato de salida:</h3>
+                <div class="format-grid">
+                    <div class="format-option" data-format="proportion65">
+                        <strong>6:5 Proporción</strong>
+                        <div>1200×1000px</div>
+                    </div>
+                    <div class="format-option" data-format="square">
+                        <strong>Cuadrado 1:1</strong>
+                        <div>527×527px</div>
+                    </div>
+                    <div class="format-option" data-format="portrait">
+                        <strong>Retrato 3:4</strong>
+                        <div>527×702px</div>
+                    </div>
+                    <div class="format-option" data-format="landscape">
+                        <strong>Apaisado 16:9</strong>
+                        <div>527×296px</div>
+                    </div>
+                    <div class="format-option" data-format="rectangular">
+                        <strong>Rectangular 4:3</strong>
+                        <div>527×395px</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-primary" id="processBtn" disabled>🚀 Normalizar Imagen</button>
+            </div>
+        </section>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Procesando imagen...</p>
+        </div>
+
+        <div class="error" id="errorMessage"></div>
+        <div class="success" id="successMessage"></div>
+
+        <section class="preview-section" id="previewSection">
+            <h2>📋 Vista Previa - Imagen Original</h2>
+            <div class="preview-grid">
+                <div class="image-container">
+                    <h3>📸 Imagen Original Subida</h3>
+                    <img id="originalImagePreview" src="" alt="Imagen original">
+                </div>
+
+                <div class="tech-specs">
+                    <h3>📊 Datos Técnicos Originales (Detección Automática)</h3>
+                    <div class="specs-grid" id="originalSpecsPreview">
+                        <!-- Se llenará automáticamente -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="buttons">
+                <button class="btn-primary" id="processFromPreviewBtn">🚀 Proceder a Normalizar</button>
+            </div>
+        </section>
+
+        <section class="results-section" id="resultsSection">
+            <h2>🎯 Resultado del Procesamiento</h2>
+            <div class="results-grid">
+                <div class="image-container">
+                    <h3>📸 Imagen Original</h3>
+                    <img id="originalImage" src="" alt="Imagen original">
+                    <div class="tech-specs" style="margin-top: 20px;">
+                        <h4>📊 Datos Técnicos Originales</h4>
+                        <div class="specs-grid" id="originalSpecs">
+                            <!-- Se llenará automáticamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="image-container">
+                    <h3>🔄 Imagen Normalizada</h3>
+                    <img id="processedImage" src="" alt="Imagen normalizada">
+                    <div class="tech-specs" style="margin-top: 20px;">
+                        <h4>📈 Datos Técnicos Procesados</h4>
+                        <div class="specs-grid" id="processedSpecs">
+                            <!-- Se llenará automáticamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="adjustment-section" id="adjustmentSection">
+                <h3>🎛️ Ajuste Fino de Escala</h3>
+                <p>Ajusta el tamaño del producto en la imagen normalizada:</p>
+                
+                <div class="scale-control">
+                    <div class="scale-value" id="scaleValue">100%</div>
+                    <input type="range" class="scale-slider" id="scaleSlider" 
+                           min="25" max="200" value="100" step="1">
+                    <div class="scale-labels">
+                        <span>25% (Pequeño)</span>
+                        <span>100% (Automático)</span>
+                        <span>200% (Grande)</span>
+                    </div>
+                </div>
+
+                <div class="buttons">
+                    <button class="btn-primary" id="reprocessBtn">🔄 Reprocesar con esta escala</button>
+                    <button class="btn-secondary" id="downloadBtn">💾 Descargar Imagen</button>
+                </div>
+            </div>
+        </section>
     </div>
-</div>
+
+    <script src="script.js"></script>
+</body>
+</html>
