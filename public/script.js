@@ -1,267 +1,357 @@
-const form = document.getElementById("uploadForm");
-const imageInput = document.getElementById("imageInput");
-const imageFormatSelect = document.getElementById("imageFormat");
-const previewContainer = document.getElementById("preview-container");
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-const zoom = document.getElementById("zoom");
-const zoomValue = document.getElementById("zoomValue");
-const downloadBtn = document.getElementById("downloadBtn");
-const originalImgElement = document.getElementById("original");
-
-// Elementos para datos técnicos ORIGINALES
-const originalTech = document.getElementById("original-tech");
-const originalCanvasSize = document.getElementById("original-canvas-size");
-const originalProductSize = document.getElementById("original-product-size");
-const originalMargin = document.getElementById("original-margin");
-const originalBackground = document.getElementById("original-background");
-const originalScale = document.getElementById("original-scale");
-
-// Elementos para datos técnicos PROCESADOS
-const processedTech = document.getElementById("processed-tech");
-const processedCanvasSize = document.getElementById("processed-canvas-size");
-const processedProductSize = document.getElementById("processed-product-size");
-const processedMargin = document.getElementById("processed-margin");
-const processedBackground = document.getElementById("processed-background");
-const processedScale = document.getElementById("processed-scale");
-
-let processedImage = null;
-let currentScale = 1;
-let currentImageFile = null;
-let currentImageInfo = null;
-let currentTechData = null;
-
-// ACTUALIZAR TAMAÑO DEL CANVAS SEGÚN FORMATO
-function updateCanvasSize() {
-  const format = imageFormatSelect.value;
-  const sizes = {
-    proportion65: { width: 1200, height: 1000 },
-    square: { width: 527, height: 527 },
-    portrait: { width: 527, height: 702 },
-    landscape: { width: 527, height: 296 },
-    rectangular: { width: 527, height: 395 }
-  };
-  
-  const size = sizes[format];
-  if (size) {
-    canvas.width = size.width;
-    canvas.height = size.height;
-  }
-  
-  // Redibujar si hay imagen procesada
-  if (processedImage) {
-    drawProcessedImage();
-  }
-}
-
-// ACTUALIZAR CANVAS CUANDO CAMBIA EL FORMATO
-imageFormatSelect.addEventListener("change", updateCanvasSize);
-
-// ACTUALIZAR VALOR DEL ZOOM EN TIEMPO REAL
-zoom.addEventListener("input", () => {
-  currentScale = zoom.value / 100;
-  zoomValue.textContent = `${zoom.value}%`;
-  
-  if (processedImage) {
-    drawProcessedImage();
-    updateProcessedTechDataWithZoom();
-  }
-});
-
-// MOSTRAR IMAGEN ORIGINAL AL SUBIRLA
-imageInput.addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  currentImageFile = file;
-
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    originalImgElement.src = event.target.result;
-    
-    // Obtener información básica de la imagen original
-    const img = new Image();
-    img.onload = function() {
-      currentImageInfo = {
-        width: this.width,
-        height: this.height
-      };
-      // Mostrar datos técnicos básicos mientras se procesa
-      showBasicOriginalTechData();
-    };
-    img.src = event.target.result;
-    
-    previewContainer.classList.remove("hidden");
-    originalTech.classList.remove("hidden");
-    processedTech.classList.add("hidden"); // Ocultar datos procesados hasta que se procese
-  };
-  reader.readAsDataURL(file);
-});
-
-// MOSTRAR DATOS TÉCNICOS BÁSICOS DE LA ORIGINAL
-function showBasicOriginalTechData() {
-  if (!currentImageInfo) return;
-  
-  originalCanvasSize.textContent = `${currentImageInfo.width} × ${currentImageInfo.height} px`;
-  originalProductSize.textContent = `${currentImageInfo.width} × ${currentImageInfo.height} px`;
-  originalMargin.textContent = `0 px`;
-  originalBackground.textContent = `Original`;
-  originalScale.textContent = `100%`;
-}
-
-// MOSTRAR DATOS TÉCNICOS ORIGINALES DEL SERVIDOR
-function showOriginalTechData(techData) {
-  if (!techData) return;
-  
-  originalCanvasSize.textContent = techData.originalCanvas;
-  originalProductSize.textContent = techData.originalProduct;
-  originalMargin.textContent = techData.originalMargin;
-  originalBackground.textContent = techData.originalBackground;
-  originalScale.textContent = techData.originalScale;
-  
-  originalTech.classList.remove("hidden");
-}
-
-// MOSTRAR DATOS TÉCNICOS PROCESADOS
-function showProcessedTechData(techData) {
-  if (!techData) return;
-  
-  currentTechData = techData; // Guardar para actualizaciones con zoom
-  
-  processedCanvasSize.textContent = techData.processedCanvas;
-  processedProductSize.textContent = techData.processedProduct;
-  processedMargin.textContent = techData.processedMargin;
-  processedBackground.textContent = techData.processedBackground;
-  processedScale.textContent = techData.processedScale;
-  
-  processedTech.classList.remove("hidden");
-}
-
-// ACTUALIZAR DATOS PROCESADOS CON ZOOM APLICADO
-function updateProcessedTechDataWithZoom() {
-  if (!currentTechData) return;
-  
-  // Extraer dimensiones base del producto
-  const baseSize = currentTechData.processedProduct.split(' × ');
-  const baseWidth = parseInt(baseSize[0]);
-  const baseHeight = parseInt(baseSize[1]);
-  
-  // Calcular nuevas dimensiones con zoom
-  const zoomedWidth = Math.round(baseWidth * currentScale);
-  const zoomedHeight = Math.round(baseHeight * currentScale);
-  
-  // Actualizar display
-  processedProductSize.textContent = `${zoomedWidth} × ${zoomedHeight} px`;
-  processedScale.textContent = `${(currentScale * 100).toFixed(1)}%`;
-}
-
-// PROCESAR IMAGEN
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const file = currentImageFile || imageInput.files[0];
-  const imageFormat = imageFormatSelect.value;
-
-  if (!file || !imageFormat) {
-    alert("Por favor, sube una imagen y selecciona un formato");
-    return;
-  }
-
-  const originalButton = form.querySelector('button');
-  originalButton.textContent = 'Analizando y procesando...';
-  originalButton.disabled = true;
-
-  try {
-    const formData = new FormData();
-    formData.append("imagen", file);
-    formData.append("imageFormat", imageFormat);
-
-    const res = await fetch("/procesar", { 
-      method: "POST", 
-      body: formData 
-    });
-    
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.error || `Error del servidor: ${res.status}`);
-    }
-    
-    const result = await res.json();
-    
-    if (!result.success) {
-      throw new Error(result.error || "Error desconocido");
+class ImageNormalizer {
+    constructor() {
+        this.currentImage = null;
+        this.currentFormat = null;
+        this.originalTechData = null;
+        this.currentProcessedImage = null;
+        this.currentScale = 100;
+        
+        this.initializeEventListeners();
     }
 
-    // Cargar la imagen procesada
-    const img = new Image();
-    img.src = result.procesada;
-    img.onload = () => {
-      processedImage = img;
-      currentScale = 1;
-      zoom.value = 100;
-      zoomValue.textContent = "100%";
-      drawProcessedImage();
-      
-      // Mostrar datos técnicos actualizados
-      showOriginalTechData(result.originalTech);
-      showProcessedTechData(result.processedTech);
-      
-      console.log("🎉 Normalización completada:", result.detalles);
-      
-      originalButton.textContent = 'Reprocesar imagen';
-      originalButton.disabled = false;
-    };
-    
-  } catch (error) {
-    console.error("Error:", error);
-    alert("Error al procesar la imagen: " + error.message);
-    originalButton.textContent = 'Procesar imagen';
-    originalButton.disabled = false;
-  }
-});
+    initializeEventListeners() {
+        // Upload area
+        const uploadArea = document.getElementById('uploadArea');
+        const imageInput = document.getElementById('imageInput');
+        
+        uploadArea.addEventListener('click', () => imageInput.click());
+        uploadArea.addEventListener('dragover', (e) => this.handleDragOver(e));
+        uploadArea.addEventListener('drop', (e) => this.handleDrop(e));
+        imageInput.addEventListener('change', (e) => this.handleFileSelect(e));
 
-// DIBUJAR IMAGEN PROCESADA
-function drawProcessedImage() {
-  if (!processedImage) return;
-  
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "white";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
-  const scale = currentScale;
-  const w = processedImage.width * scale;
-  const h = processedImage.height * scale;
-  const x = (canvas.width - w) / 2;
-  const y = (canvas.height - h) / 2;
-  
-  ctx.drawImage(processedImage, x, y, w, h);
+        // Format selection
+        document.querySelectorAll('.format-option').forEach(option => {
+            option.addEventListener('click', (e) => this.selectFormat(e));
+        });
+
+        // Buttons
+        document.getElementById('processBtn').addEventListener('click', () => this.processImage());
+        document.getElementById('reprocessBtn').addEventListener('click', () => this.reprocessImage());
+        document.getElementById('downloadBtn').addEventListener('click', () => this.downloadImage());
+
+        // Scale slider
+        document.getElementById('scaleSlider').addEventListener('input', (e) => {
+            this.currentScale = parseInt(e.target.value);
+            document.getElementById('scaleValue').textContent = `${this.currentScale}%`;
+        });
+    }
+
+    handleDragOver(e) {
+        e.preventDefault();
+        document.getElementById('uploadArea').classList.add('highlight');
+    }
+
+    handleDrop(e) {
+        e.preventDefault();
+        document.getElementById('uploadArea').classList.remove('highlight');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            this.handleImageFile(files[0]);
+        }
+    }
+
+    handleFileSelect(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+            this.handleImageFile(files[0]);
+        }
+    }
+
+    async handleImageFile(file) {
+        // Validar tipo de archivo
+        if (!file.type.startsWith('image/')) {
+            this.showError('Por favor, selecciona un archivo de imagen válido.');
+            return;
+        }
+
+        // Validar tamaño (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            this.showError('La imagen es demasiado grande. Máximo 10MB.');
+            return;
+        }
+
+        this.currentImage = file;
+        this.showLoading('Detectando producto...');
+
+        try {
+            // Primero: detección automática para datos técnicos
+            const detectionData = await this.detectProduct(file);
+            this.originalTechData = detectionData;
+            
+            // Mostrar preview de la imagen original
+            await this.displayOriginalImage(file);
+            
+            // Mostrar datos técnicos originales
+            this.displayOriginalTechSpecs(detectionData.originalTech);
+            
+            // Habilitar botón de procesar
+            document.getElementById('processBtn').disabled = false;
+            
+            this.hideLoading();
+            this.showSuccess('✅ Imagen cargada y analizada correctamente. Selecciona formato y haz clic en "Normalizar Imagen".');
+
+        } catch (error) {
+            this.hideLoading();
+            this.showError('Error al analizar la imagen: ' + error.message);
+        }
+    }
+
+    async detectProduct(file) {
+        const formData = new FormData();
+        formData.append('imagen', file);
+
+        const response = await fetch('/detectar', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detalle || 'Error en la detección');
+        }
+
+        return await response.json();
+    }
+
+    async displayOriginalImage(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('originalImage').src = e.target.result;
+                resolve();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    displayOriginalTechSpecs(techData) {
+        const specsContainer = document.getElementById('originalSpecs');
+        specsContainer.innerHTML = `
+            <div class="spec-item">
+                <div class="spec-label">Lienzo Original</div>
+                <div class="spec-value">${techData.originalCanvas}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Producto Detectado</div>
+                <div class="spec-value">${techData.originalProduct}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Margen Promedio</div>
+                <div class="spec-value">${techData.originalMargin}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Fondo Detectado</div>
+                <div class="spec-value">${techData.originalBackground}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Escala Original</div>
+                <div class="spec-value">${techData.originalScale}</div>
+            </div>
+        `;
+    }
+
+    selectFormat(e) {
+        // Remover selección anterior
+        document.querySelectorAll('.format-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+        
+        // Agregar selección nueva
+        e.currentTarget.classList.add('selected');
+        this.currentFormat = e.currentTarget.dataset.format;
+        
+        console.log('Formato seleccionado:', this.currentFormat);
+    }
+
+    async processImage() {
+        if (!this.currentImage) {
+            this.showError('Por favor, selecciona una imagen primero.');
+            return;
+        }
+
+        if (!this.currentFormat) {
+            this.showError('Por favor, selecciona un formato de salida.');
+            return;
+        }
+
+        this.showLoading('Normalizando imagen...');
+
+        try {
+            const result = await this.sendProcessRequest(this.currentScale);
+            this.displayProcessedResult(result);
+            this.hideLoading();
+            this.showSuccess('🎉 Imagen normalizada correctamente!');
+
+        } catch (error) {
+            this.hideLoading();
+            this.showError('Error al procesar la imagen: ' + error.message);
+        }
+    }
+
+    async reprocessImage() {
+        if (!this.currentImage || !this.currentFormat) {
+            this.showError('No hay imagen para reprocesar.');
+            return;
+        }
+
+        this.showLoading('Reprocesando con nueva escala...');
+
+        try {
+            const result = await this.sendProcessRequest(this.currentScale);
+            this.displayProcessedResult(result);
+            this.hideLoading();
+            this.showSuccess('🔄 Imagen reprocesada correctamente!');
+
+        } catch (error) {
+            this.hideLoading();
+            this.showError('Error al reprocesar: ' + error.message);
+        }
+    }
+
+    async sendProcessRequest(scale) {
+        const formData = new FormData();
+        formData.append('imagen', this.currentImage);
+        formData.append('imageFormat', this.currentFormat);
+        formData.append('userScale', scale.toString());
+
+        const response = await fetch('/procesar', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detalle || 'Error en el procesamiento');
+        }
+
+        return await response.json();
+    }
+
+    displayProcessedResult(result) {
+        // Mostrar sección de resultados
+        document.getElementById('resultsSection').style.display = 'block';
+        
+        // Mostrar imagen procesada
+        document.getElementById('processedImage').src = result.procesada;
+        this.currentProcessedImage = result.procesada;
+        
+        // Mostrar datos técnicos procesados
+        this.displayProcessedTechSpecs(result.processedTech);
+        
+        // Mostrar detalles adicionales
+        this.displayAdditionalDetails(result.detalles);
+        
+        // Mostrar sección de ajuste fino
+        document.getElementById('adjustmentSection').style.display = 'block';
+        
+        // Resetear escala a 100% para nuevo reprocesamiento
+        this.currentScale = 100;
+        document.getElementById('scaleSlider').value = '100';
+        document.getElementById('scaleValue').textContent = '100%';
+        
+        // Scroll a resultados
+        document.getElementById('resultsSection').scrollIntoView({ 
+            behavior: 'smooth' 
+        });
+    }
+
+    displayProcessedTechSpecs(techData) {
+        const specsContainer = document.getElementById('processedSpecs');
+        specsContainer.innerHTML = `
+            <div class="spec-item">
+                <div class="spec-label">Lienzo Procesado</div>
+                <div class="spec-value">${techData.processedCanvas}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Producto Procesado</div>
+                <div class="spec-value">${techData.processedProduct}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Margen Aplicado</div>
+                <div class="spec-value">${techData.processedMargin}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Fondo Final</div>
+                <div class="spec-value">${techData.processedBackground}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Escala Aplicada</div>
+                <div class="spec-value">${techData.processedScale}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Escala Usuario</div>
+                <div class="spec-value">${techData.userScale}</div>
+            </div>
+        `;
+    }
+
+    displayAdditionalDetails(detalles) {
+        // Podemos expandir esto para mostrar más detalles si es necesario
+        console.log('Detalles del procesamiento:', detalles);
+    }
+
+    downloadImage() {
+        if (!this.currentProcessedImage) {
+            this.showError('No hay imagen para descargar.');
+            return;
+        }
+
+        const link = document.createElement('a');
+        link.href = this.currentProcessedImage;
+        link.download = `imagen-normalizada-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    showLoading(message = 'Procesando...') {
+        const loading = document.getElementById('loading');
+        loading.style.display = 'block';
+        loading.querySelector('p').textContent = message;
+        
+        document.getElementById('processBtn').disabled = true;
+        if (document.getElementById('reprocessBtn')) {
+            document.getElementById('reprocessBtn').disabled = true;
+        }
+    }
+
+    hideLoading() {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('processBtn').disabled = false;
+        if (document.getElementById('reprocessBtn')) {
+            document.getElementById('reprocessBtn').disabled = false;
+        }
+    }
+
+    showError(message) {
+        const errorDiv = document.getElementById('errorMessage');
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        
+        document.getElementById('successMessage').style.display = 'none';
+        
+        // Auto-ocultar después de 5 segundos
+        setTimeout(() => {
+            errorDiv.style.display = 'none';
+        }, 5000);
+    }
+
+    showSuccess(message) {
+        const successDiv = document.getElementById('successMessage');
+        successDiv.textContent = message;
+        successDiv.style.display = 'block';
+        
+        document.getElementById('errorMessage').style.display = 'none';
+        
+        // Auto-ocultar después de 3 segundos
+        setTimeout(() => {
+            successDiv.style.display = 'none';
+        }, 3000);
+    }
 }
 
-// DESCARGAR IMAGEN
-downloadBtn.addEventListener("click", () => {
-  if (!processedImage) {
-    alert("No hay imagen procesada para descargar");
-    return;
-  }
-  
-  const formatNames = {
-    proportion65: "6-5",
-    square: "cuadrado",
-    portrait: "retrato", 
-    landscape: "apaisado",
-    rectangular: "rectangular"
-  };
-  
-  const link = document.createElement("a");
-  link.download = `normalizada_${formatNames[imageFormatSelect.value]}.png`;
-  link.href = canvas.toDataURL("image/png");
-  link.click();
+// Inicializar la aplicación cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', () => {
+    new ImageNormalizer();
 });
-
-// INICIALIZAR
-function initialize() {
-  currentScale = 1;
-  zoom.value = 100;
-  zoomValue.textContent = "100%";
-  updateCanvasSize();
-}
-initialize();
