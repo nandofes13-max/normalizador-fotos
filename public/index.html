@@ -13,7 +13,7 @@
     <form id="uploadForm">
       <input type="file" id="imageInput" name="image" accept="image/*" required>
       
-      <!-- SELECTOR DE FORMATO ACTUALIZADO -->
+      <!-- SELECTOR DE FORMATO -->
       <div class="format-selector">
         <label>Formato Imagen:</label>
         <select id="imageFormat" name="imageFormat" required>
@@ -33,28 +33,62 @@
         <div>
           <h3>Original</h3>
           <img id="original" src="" alt="Original">
-          <!-- DATOS TÉCNICOS ORIGINAL -->
+          <!-- DATOS TÉCNICOS ORIGINAL - ACTUALIZADOS -->
           <div id="original-tech" class="tech-data hidden">
-            <h4>Datos Técnicos:</h4>
-            <p id="original-canvas-size"></p>
-            <p id="original-background"></p>
-            <p id="original-product-size"></p>
+            <h4>📊 Datos Técnicos Originales:</h4>
+            <div class="tech-row">
+              <span class="tech-label">Lienzo:</span>
+              <span id="original-canvas-size" class="tech-value">-</span>
+            </div>
+            <div class="tech-row">
+              <span class="tech-label">Producto:</span>
+              <span id="original-product-size" class="tech-value">-</span>
+            </div>
+            <div class="tech-row">
+              <span class="tech-label">Margen:</span>
+              <span id="original-margin" class="tech-value">-</span>
+            </div>
+            <div class="tech-row">
+              <span class="tech-label">Fondo:</span>
+              <span id="original-background" class="tech-value">-</span>
+            </div>
+            <div class="tech-row">
+              <span class="tech-label">Escala:</span>
+              <span id="original-scale" class="tech-value">-</span>
+            </div>
           </div>
         </div>
         <div>
           <h3>Procesada</h3>
           <canvas id="canvas" width="1200" height="1000"></canvas>
-          <!-- DATOS TÉCNICOS PROCESADA -->
+          <!-- DATOS TÉCNICOS PROCESADA - ACTUALIZADOS -->
           <div id="processed-tech" class="tech-data hidden">
-            <h4>Datos Técnicos:</h4>
-            <p id="processed-canvas-size"></p>
-            <p id="processed-background"></p>
-            <p id="processed-product-size"></p>
-            <p id="processed-scale"></p>
+            <h4>📈 Datos Técnicos Procesados:</h4>
+            <div class="tech-row">
+              <span class="tech-label">Lienzo:</span>
+              <span id="processed-canvas-size" class="tech-value">-</span>
+            </div>
+            <div class="tech-row">
+              <span class="tech-label">Producto:</span>
+              <span id="processed-product-size" class="tech-value">-</span>
+            </div>
+            <div class="tech-row">
+              <span class="tech-label">Margen:</span>
+              <span id="processed-margin" class="tech-value">-</span>
+            </div>
+            <div class="tech-row">
+              <span class="tech-label">Fondo:</span>
+              <span id="processed-background" class="tech-value">-</span>
+            </div>
+            <div class="tech-row">
+              <span class="tech-label">Escala:</span>
+              <span id="processed-scale" class="tech-value">-</span>
+            </div>
           </div>
           <div class="controls">
             <label>Ajuste fino: </label>
             <input type="range" id="zoom" min="80" max="120" value="100">
+            <span class="zoom-value" id="zoomValue">100%</span>
             <button id="downloadBtn">📥 Descargar Imagen</button>
           </div>
         </div>
