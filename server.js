@@ -267,38 +267,63 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     console.log(`📐 Escala aplicada: ${(scale * 100).toFixed(1)}%`);
     console.log(`📐 Tamaño normalizado: ${productWidth}x${productHeight}px`);
 
-    // ✅ PASO 4: CREAR IMAGEN NORMALIZADA (CON COLORES ORIGINALES)
-    const finalImageBuffer = await sharp({
-      create: {
-        width: format.width,
-        height: format.height,
-        channels: 3,
-        background: { r: 255, g: 255, b: 255 }
-      }
-    })
-    .png()
-    .composite([
-      {
-        input: await sharp(detectionResult.data, {
-          raw: {
-            width: detectionResult.info.width,
-            height: detectionResult.info.height,
-            channels: 4
-          }
-        })
-          .resize(productWidth, productHeight, {
-            fit: 'contain',
-            background: { r: 0, g: 0, b: 0, alpha: 0 }
-          })
-          .png()
-          .toBuffer(),
-        top: productY,
-        left: productX
-      }
-    ])
-    .png()
-    .toBuffer();
+       // ✅ PASO 4: VERSIÓN ROBUSTA CON VALIDACIONES
+    
+    // Validar dimensiones antes de procesar
+    if (productWidth <= 0 || productHeight <= 0) {
+      throw new Error(`Dimensiones inválidas: ${productWidth}x${productHeight}`);
+    }
 
+    if (productWidth > 5000 || productHeight > 5000) {
+      throw new Error(`Dimensiones demasiado grandes: ${productWidth}x${productHeight}`);
+    }
+
+    console.log(`🔧 Procesando con dimensiones: ${productWidth}x${productHeight}`);
+
+    try {
+      // Procesar en dos pasos separados
+      const resizedProduct = await sharp(detectionResult.data, {
+        raw: {
+          width: detectionResult.info.width,
+          height: detectionResult.info.height,
+          channels: 4
+        }
+      })
+      .resize({
+        width: Math.max(1, Math.round(productWidth)),
+        height: Math.max(1, Math.round(productHeight)),
+        fit: 'contain',
+        background: { r: 0, g: 0, b: 0, alpha: 0 }
+      })
+      .png()
+      .toBuffer();
+
+      const finalImageBuffer = await sharp({
+        create: {
+          width: format.width,
+          height: format.height,
+          channels: 3,
+          background: { r: 255, g: 255, b: 255 }
+        }
+      })
+      .png()
+      .composite([
+        {
+          input: resizedProduct,
+          top: Math.max(0, Math.round(productY)),
+          left: Math.max(0, Math.round(productX))
+        }
+      ])
+      .png()
+      .toBuffer();
+
+      console.log("✅ Imagen procesada correctamente");
+
+    } catch (sharpError) {
+      console.error("❌ Error en Sharp:", sharpError);
+      throw new Error(`Error al procesar imagen: ${sharpError.message}`);
+    }
+    
     // ✅ PASO 5: GUARDAR RESULTADOS
     const timestamp = Date.now();
     const originalPath = path.join("uploads", `original_${timestamp}.jpg`);
