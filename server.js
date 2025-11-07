@@ -23,86 +23,14 @@ app.get("/", (req, res) => {
   res.sendFile(path.resolve("public/index.html"));
 });
 
-// ✅ VERSIÓN CORREGIDA: Detección sin problemas de buffer
-async function detectAndCropProduct(imagePath) {
-  console.log("🔍 Ejecutando detección automática de producto...");
-  
-  try {
-    // Cargar imagen y obtener metadatos
-    const image = sharp(imagePath);
-    const metadata = await image.metadata();
-    
-    console.log(`📐 Imagen original: ${metadata.width}x${metadata.height}px`);
-
-    // ESTRATEGIA MEJORADA: Usar JPEG temporal para evitar problemas RAW
-    const tempImagePath = path.join("uploads", `temp_analysis_${Date.now()}.jpg`);
-    
-    // Convertir a RGB y guardar temporalmente
-    await image
-      .jpeg({ quality: 95 })
-      .toFile(tempImagePath);
-
-    // Analizar la imagen temporal
-    const tempImage = sharp(tempImagePath);
-    const { data, info } = await tempImage
-      .ensureAlpha()
-      .raw()
-      .toBuffer({ resolveWithObject: true });
-
-    // ✅ ESTRATEGIA: Analizar bordes para detectar color de fondo
-    const backgroundColor = detectBackgroundColor(data, info.width, info.height);
-    console.log(`🎨 Color de fondo detectado: RGB(${backgroundColor.r}, ${backgroundColor.g}, ${backgroundColor.b})`);
-
-    // ✅ DETECTAR LÍMITES DEL PRODUCTO
-    const productBounds = findProductBounds(data, info.width, info.height, backgroundColor);
-    
-    console.log(`📦 Producto detectado: [${productBounds.x}, ${productBounds.y}] - [${productBounds.x2}, ${productBounds.y2}]`);
-    console.log(`📦 Dimensiones producto: ${productBounds.width}x${productBounds.height}px`);
-
-    // Recortar el producto detectado DESDE EL ORIGINAL (no del buffer)
-    const croppedBuffer = await sharp(imagePath)
-      .extract({
-        left: productBounds.x,
-        top: productBounds.y,
-        width: productBounds.width,
-        height: productBounds.height
-      })
-      .png()
-      .toBuffer();
-
-    // Limpiar archivo temporal
-    fs.unlinkSync(tempImagePath);
-
-    return {
-      croppedBuffer: croppedBuffer,
-      productBounds: productBounds,
-      backgroundColor: backgroundColor,
-      originalWidth: metadata.width,
-      originalHeight: metadata.height
-    };
-    
-  } catch (error) {
-    console.error("❌ Error en detección de producto:", error);
-    
-    // Limpiar archivos temporales en caso de error
-    const tempFiles = fs.readdirSync("uploads").filter(file => file.startsWith("temp_analysis_"));
-    tempFiles.forEach(file => {
-      try { fs.unlinkSync(path.join("uploads", file)); } catch(e) {}
-    });
-    
-    throw error;
-  }
-}
-
 // ✅ FUNCIÓN: Detectar color de fondo analizando bordes
 function detectBackgroundColor(imageData, width, height) {
-  const sampleSize = 50; // Muestrear primeros 50 píxeles de cada borde
+  const sampleSize = 50;
   const samples = [];
   
-  // Muestrear bordes superior e inferior
   for (let i = 0; i < sampleSize; i++) {
     // Borde superior
-    const topIndex = (i * 4); // RGBA
+    const topIndex = (i * 4);
     samples.push({
       r: imageData[topIndex],
       g: imageData[topIndex + 1],
@@ -118,7 +46,6 @@ function detectBackgroundColor(imageData, width, height) {
     });
   }
   
-  // Muestrear bordes izquierdo y derecho
   for (let i = 0; i < sampleSize; i++) {
     // Borde izquierdo
     const leftIndex = (i * width) * 4;
@@ -137,7 +64,6 @@ function detectBackgroundColor(imageData, width, height) {
     });
   }
   
-  // Calcular color promedio de las muestras
   const avgColor = samples.reduce((acc, color) => {
     acc.r += color.r;
     acc.g += color.g;
@@ -152,12 +78,14 @@ function detectBackgroundColor(imageData, width, height) {
   return avgColor;
 }
 
-// ✅ FUNCIÓN: Encontrar límites del producto por contraste
+// ✅ FUNCIÓN: Encontrar límites del producto con DEBUG
 function findProductBounds(imageData, width, height, backgroundColor) {
-  const tolerance = 30; // Tolerancia de color (0-255)
+  console.log("🎯 INICIANDO DETECCIÓN DE PRODUCTO...");
+  const tolerance = 30;
   let left = width, right = 0, top = height, bottom = 0;
+  let pixelsDetectados = 0;
+  let totalPixels = width * height;
   
-  // Escanear toda la imagen para encontrar límites
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const index = (y * width + x) * 4;
@@ -165,13 +93,12 @@ function findProductBounds(imageData, width, height, backgroundColor) {
       const g = imageData[index + 1];
       const b = imageData[index + 2];
       
-      // Verificar si el píxel es significativamente diferente del fondo
       const colorDiff = Math.abs(r - backgroundColor.r) + 
                        Math.abs(g - backgroundColor.g) + 
                        Math.abs(b - backgroundColor.b);
       
       if (colorDiff > tolerance) {
-        // Este píxel pertenece al producto
+        pixelsDetectados++;
         if (x < left) left = x;
         if (x > right) right = x;
         if (y < top) top = y;
@@ -180,7 +107,16 @@ function findProductBounds(imageData, width, height, backgroundColor) {
     }
   }
   
-  // Aplicar margen de seguridad (5 píxeles)
+  console.log(`📊 Píxeles detectados: ${pixelsDetectados}/${totalPixels} (${((pixelsDetectados / totalPixels) * 100).toFixed(1)}%)`);
+  
+  if (pixelsDetectados === 0) {
+    console.log("❌ NO SE DETECTÓ PRODUCTO - Usando imagen completa");
+    return {
+      x: 0, y: 0, x2: width - 1, y2: height - 1,
+      width: width, height: height
+    };
+  }
+  
   const safetyMargin = 5;
   left = Math.max(0, left - safetyMargin);
   top = Math.max(0, top - safetyMargin);
@@ -190,15 +126,16 @@ function findProductBounds(imageData, width, height, backgroundColor) {
   const productWidth = right - left + 1;
   const productHeight = bottom - top + 1;
   
-  // Verificar que la detección es válida (no demasiado pequeña)
-  const minSize = 50; // Tamaño mínimo del producto
+  const minSize = 50;
   if (productWidth < minSize || productHeight < minSize) {
-    console.log("⚠️ Producto muy pequeño, usando imagen completa");
+    console.log(`⚠️ PRODUCTO MUY PEQUEÑO - Usando imagen completa`);
     return {
       x: 0, y: 0, x2: width - 1, y2: height - 1,
       width: width, height: height
     };
   }
+  
+  console.log(`✅ Producto detectado: ${productWidth}x${productHeight}px`);
   
   return {
     x: left, y: top, x2: right, y2: bottom,
@@ -225,35 +162,110 @@ function calculateOriginalMetrics(originalWidth, originalHeight, productBounds) 
   };
 }
 
-app.post("/procesar", upload.single("imagen"), async (req, res) => {
+// ✅ NUEVO ENDPOINT: Detectar producto y retornar datos técnicos (sin procesar)
+app.post("/detectar", upload.single("imagen"), async (req, res) => {
   const imagen = req.file;
-  const imageFormat = req.body.imageFormat;
 
   if (!imagen) {
-    console.error("❌ No se recibió ninguna imagen");
+    return res.status(400).json({ error: "No se recibió ninguna imagen" });
+  }
+
+  console.log("📸 Imagen recibida para detección:", imagen.originalname);
+
+  try {
+    // Cargar imagen y obtener metadatos
+    const image = sharp(imagen.path);
+    const metadata = await image.metadata();
+    
+    // Estrategia segura: usar JPEG temporal
+    const tempImagePath = path.join("uploads", `temp_detection_${Date.now()}.jpg`);
+    await image.jpeg({ quality: 95 }).toFile(tempImagePath);
+
+    // Analizar la imagen temporal
+    const tempImage = sharp(tempImagePath);
+    const { data, info } = await tempImage.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+
+    // Detectar color de fondo y producto
+    const backgroundColor = detectBackgroundColor(data, info.width, info.height);
+    const productBounds = findProductBounds(data, info.width, info.height, backgroundColor);
+
+    // Calcular métricas
+    const originalMetrics = calculateOriginalMetrics(metadata.width, metadata.height, productBounds);
+
+    // Limpiar archivos temporales
+    fs.unlinkSync(tempImagePath);
+    fs.unlinkSync(imagen.path);
+
+    console.log("✅ Detección completada - Enviando datos técnicos");
+
+    res.json({
+      success: true,
+      originalTech: originalMetrics,
+      detectionInfo: {
+        productBounds: productBounds,
+        backgroundColor: backgroundColor
+      }
+    });
+
+  } catch (error) {
+    console.error("💥 Error en detección:", error);
+    
+    if (imagen && fs.existsSync(imagen.path)) {
+      fs.unlinkSync(imagen.path);
+    }
+    
+    res.status(500).json({ 
+      error: "Error en detección automática", 
+      detalle: error.message 
+    });
+  }
+});
+
+// ✅ ENDPOINT: Procesar imagen con escala específica
+app.post("/procesar", upload.single("imagen"), async (req, res) => {
+  const imagen = req.file;
+  const { imageFormat, userScale = 100 } = req.body; // userScale de 25 a 200
+
+  if (!imagen) {
     return res.status(400).json({ error: "No se recibió ninguna imagen" });
   }
 
   if (!imageFormat) {
-    console.error("❌ No se especificó el formato");
     return res.status(400).json({ error: "Seleccione el formato de imagen" });
   }
 
-  console.log("📸 Imagen recibida:", imagen.originalname);
-  console.log("🛍️ Formato seleccionado:", imageFormat);
+  console.log("🛍️ Procesando imagen:", imagen.originalname);
+  console.log("🎚️ Escala usuario:", `${userScale}%`);
 
   try {
-    // ✅ PASO 1: DETECTAR Y ANALIZAR PRODUCTO EN ORIGINAL
-    const detectionResult = await detectAndCropProduct(imagen.path);
-    const originalMetrics = calculateOriginalMetrics(
-      detectionResult.originalWidth,
-      detectionResult.originalHeight,
-      detectionResult.productBounds
-    );
-    
-    console.log("📊 Métricas originales REALES:", originalMetrics);
+    // PASO 1: DETECTAR PRODUCTO
+    const image = sharp(imagen.path);
+    const metadata = await image.metadata();
 
-    // ✅ PASO 2: PREPARAR FORMATO DE SALIDA
+    const tempImagePath = path.join("uploads", `temp_process_${Date.now()}.jpg`);
+    await image.jpeg({ quality: 95 }).toFile(tempImagePath);
+
+    const tempImage = sharp(tempImagePath);
+    const { data, info } = await tempImage.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+
+    const backgroundColor = detectBackgroundColor(data, info.width, info.height);
+    const productBounds = findProductBounds(data, info.width, info.height, backgroundColor);
+
+    // Recortar producto
+    const croppedBuffer = await sharp(imagen.path)
+      .extract({
+        left: productBounds.x,
+        top: productBounds.y,
+        width: productBounds.width,
+        height: productBounds.height
+      })
+      .png()
+      .toBuffer();
+
+    // Limpiar temporal
+    fs.unlinkSync(tempImagePath);
+
+    // PASO 2: PREPARAR FORMATO
     const imageFormats = {
       proportion65: { width: 1200, height: 1000, label: "Proporción 6:5" },
       square:       { width: 527, height: 527, label: "Cuadrado 1:1" },
@@ -267,46 +279,34 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       throw new Error(`Formato no válido: ${imageFormat}`);
     }
 
-    console.log(`🎯 Formato destino: ${format.label} (${format.width}x${format.height}px)`);
+    // PASO 3: CALCULAR ESCALA CON AJUSTE USUARIO
+    const baseScale = Math.min(
+      format.width / productBounds.width,
+      format.height / productBounds.height
+    );
 
-    // ✅ PASO 3: CALCULAR ESCALA PARA NORMALIZACIÓN (SIN MÁRGENES)
-    const margin = 0; // 0% de margen - producto ocupa todo el lienzo
-    const availableWidth = format.width * (1 - margin);
-    const availableHeight = format.height * (1 - margin);
+    // Aplicar escala del usuario (25% = 0.25, 100% = 1.0, 200% = 2.0)
+    const userScaleFactor = parseFloat(userScale) / 100;
+    const finalScale = baseScale * userScaleFactor;
 
-    const scaleX = availableWidth / detectionResult.productBounds.width;
-    const scaleY = availableHeight / detectionResult.productBounds.height;
+    const productWidth = Math.round(productBounds.width * finalScale);
+    const productHeight = Math.round(productBounds.height * finalScale);
     
-    const scale = Math.min(scaleX, scaleY);
-
-    const productWidth = Math.round(detectionResult.productBounds.width * scale);
-    const productHeight = Math.round(detectionResult.productBounds.height * scale);
+    // Calcular posición centrada
     const productX = Math.round((format.width - productWidth) / 2);
     const productY = Math.round((format.height - productHeight) / 2);
 
-    console.log(`📐 Producto detectado: ${detectionResult.productBounds.width}x${detectionResult.productBounds.height}`);
-    console.log(`📐 Escala aplicada: ${(scale * 100).toFixed(1)}%`);
-    console.log(`📐 Tamaño normalizado: ${productWidth}x${productHeight}px`);
+    console.log(`📐 Base scale: ${(baseScale * 100).toFixed(1)}% + User scale: ${userScale}% = Final: ${(finalScale * 100).toFixed(1)}%`);
 
-    // ✅ PASO 4: VERSIÓN SIMPLIFICADA Y SEGURA
-    
-    console.log(`🔧 Procesando con dimensiones: ${productWidth}x${productHeight}`);
-
-    // Validar dimensiones
-    if (productWidth <= 0 || productHeight <= 0 || productWidth > 5000 || productHeight > 5000) {
-      throw new Error(`Dimensiones inválidas: ${productWidth}x${productHeight}`);
-    }
-
-    // SOLUCIÓN DIRECTA: Redimensionar el buffer recortado directamente
-    const resizedProductBuffer = await sharp(detectionResult.croppedBuffer)
-      .resize(Math.round(productWidth), Math.round(productHeight), {
+    // PASO 4: PROCESAR IMAGEN FINAL
+    const resizedProductBuffer = await sharp(croppedBuffer)
+      .resize(productWidth, productHeight, {
         fit: 'contain',
-        background: { r: 255, g: 255, b: 255 } // Fondo blanco para mantener proporción
+        background: { r: 255, g: 255, b: 255 }
       })
       .png()
       .toBuffer();
 
-    // Crear imagen final con el producto redimensionado centrado
     const finalImageBuffer = await sharp({
       create: {
         width: format.width,
@@ -319,63 +319,52 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     .composite([
       {
         input: resizedProductBuffer,
-        top: Math.round(productY),
-        left: Math.round(productX)
+        top: productY,
+        left: productX
       }
     ])
     .png()
     .toBuffer();
 
-    console.log("✅ Imagen procesada correctamente");
-
-    // ✅ PASO 5: GUARDAR RESULTADOS
+    // PASO 5: GUARDAR RESULTADOS
     const timestamp = Date.now();
-    const originalPath = path.join("uploads", `original_${timestamp}.jpg`);
     const processedPath = path.join("uploads", `normalizada_${timestamp}.png`);
 
-    // Guardar original
-    await sharp(imagen.path)
-      .jpeg({ quality: 90 })
-      .toFile(originalPath);
-
-    // Guardar procesada
     fs.writeFileSync(processedPath, finalImageBuffer);
     fs.unlinkSync(imagen.path);
 
-    console.log("🎉 Normalización REAL completada");
+    console.log("🎉 Procesamiento completado");
 
-    // ✅ PASO 6: ENVIAR RESPUESTA CON DATOS REALES
+    // PASO 6: ENVIAR RESPUESTA
     res.json({
       success: true,
-      original: `/uploads/${path.basename(originalPath)}`,
       procesada: `/uploads/${path.basename(processedPath)}`,
-      // Datos técnicos ORIGINALES (REALES)
-      originalTech: originalMetrics,
-      // Datos técnicos PROCESADOS (REALES)  
+      originalTech: calculateOriginalMetrics(metadata.width, metadata.height, productBounds),
       processedTech: {
         processedCanvas: `${format.width} × ${format.height} px`,
         processedProduct: `${productWidth} × ${productHeight} px`,
-        processedMargin: `0 px`, // Sin márgenes en procesada
+        processedMargin: `0 px`,
         processedBackground: "Blanco",
-        processedScale: `${(scale * 100).toFixed(1)}%`
+        processedScale: `${(finalScale * 100).toFixed(1)}%`,
+        userScale: `${userScale}%`
       },
       detalles: {
         formato: format.label,
         metodo: 'Detección Automática + Normalización',
-        productoDetectado: `${detectionResult.productBounds.width} × ${detectionResult.productBounds.height} px`
+        productoDetectado: `${productBounds.width} × ${productBounds.height} px`
       }
     });
 
-  } catch (err) {
-    console.error("💥 Error procesando imagen:", err);
+  } catch (error) {
+    console.error("💥 Error procesando imagen:", error);
     
     if (imagen && fs.existsSync(imagen.path)) {
       fs.unlinkSync(imagen.path);
     }
     
     res.status(500).json({ 
-      error: "Error interno del servidor", 
-      detalle: err.message 
+      error: "Error procesando imagen", 
+      detalle: error.message 
     });
   }
 });
