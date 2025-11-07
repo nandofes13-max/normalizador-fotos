@@ -143,29 +143,22 @@ function findProductBounds(imageData, width, height, backgroundColor) {
   };
 }
 
-// ✅ FUNCIÓN MEJORADA: Calcular métricas REALES con márgenes individuales y escala real
+// ✅ FUNCIÓN: Calcular métricas REALES de la imagen original
 function calculateOriginalMetrics(originalWidth, originalHeight, productBounds) {
   const marginLeft = productBounds.x;
   const marginRight = originalWidth - productBounds.x2 - 1;
   const marginTop = productBounds.y;
   const marginBottom = originalHeight - productBounds.y2 - 1;
   
-  // Calcular escala real (porcentaje de área ocupada)
-  const areaLienzo = originalWidth * originalHeight;
-  const areaProducto = productBounds.width * productBounds.height;
-  const escalaReal = Math.round((areaProducto / areaLienzo) * 100);
+  const totalMargin = marginLeft + marginRight + marginTop + marginBottom;
+  const avgMargin = Math.round(totalMargin / 4);
   
   return {
     originalCanvas: `${originalWidth} × ${originalHeight} px`,
     originalProduct: `${productBounds.width} × ${productBounds.height} px`,
-    // MÁRGENES INDIVIDUALES
-    marginLeft: `${marginLeft} px`,
-    marginRight: `${marginRight} px`, 
-    marginTop: `${marginTop} px`,
-    marginBottom: `${marginBottom} px`,
+    originalMargin: `${avgMargin} px`,
     originalBackground: "Detectado automáticamente",
-    // ESCALA REAL (no fija)
-    originalScale: `${escalaReal}%`
+    originalScale: "100%"
   };
 }
 
@@ -196,7 +189,7 @@ app.post("/detectar", upload.single("imagen"), async (req, res) => {
     const backgroundColor = detectBackgroundColor(data, info.width, info.height);
     const productBounds = findProductBounds(data, info.width, info.height, backgroundColor);
 
-    // Calcular métricas MEJORADAS
+    // Calcular métricas
     const originalMetrics = calculateOriginalMetrics(metadata.width, metadata.height, productBounds);
 
     // Limpiar archivos temporales
@@ -299,15 +292,9 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const productWidth = Math.round(productBounds.width * finalScale);
     const productHeight = Math.round(productBounds.height * finalScale);
     
-    // Calcular posición centrada y MÁRGENES INDIVIDUALES
+    // Calcular posición centrada
     const productX = Math.round((format.width - productWidth) / 2);
     const productY = Math.round((format.height - productHeight) / 2);
-    
-    // Calcular márgenes individuales del resultado
-    const marginLeft = productX;
-    const marginRight = format.width - productX - productWidth;
-    const marginTop = productY;
-    const marginBottom = format.height - productY - productHeight;
 
     console.log(`📐 Base scale: ${(baseScale * 100).toFixed(1)}% + User scale: ${userScale}% = Final: ${(finalScale * 100).toFixed(1)}%`);
 
@@ -348,7 +335,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     console.log("🎉 Procesamiento completado");
 
-    // PASO 6: ENVIAR RESPUESTA MEJORADA
+    // PASO 6: ENVIAR RESPUESTA
     res.json({
       success: true,
       procesada: `/uploads/${path.basename(processedPath)}`,
@@ -356,11 +343,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       processedTech: {
         processedCanvas: `${format.width} × ${format.height} px`,
         processedProduct: `${productWidth} × ${productHeight} px`,
-        // MÁRGENES INDIVIDUALES DEL RESULTADO
-        marginLeft: `${marginLeft} px`,
-        marginRight: `${marginRight} px`,
-        marginTop: `${marginTop} px`, 
-        marginBottom: `${marginBottom} px`,
+        processedMargin: `0 px`,
         processedBackground: "Blanco",
         processedScale: `${(finalScale * 100).toFixed(1)}%`,
         userScale: `${userScale}%`
