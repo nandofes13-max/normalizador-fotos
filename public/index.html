@@ -110,12 +110,14 @@
             color: white;
         }
 
-        .results-section {
+        /* NUEVA SECCIÓN: Preview inmediato */
+        .preview-section {
             padding: 40px;
+            border-bottom: 1px solid #eee;
             display: none;
         }
 
-        .results-grid {
+        .preview-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 30px;
@@ -161,6 +163,18 @@
         .spec-value {
             color: #2d3748;
             font-size: 1.1em;
+        }
+
+        .results-section {
+            padding: 40px;
+            display: none;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
         }
 
         .adjustment-section {
@@ -296,6 +310,7 @@
         }
 
         @media (max-width: 768px) {
+            .preview-grid,
             .results-grid {
                 grid-template-columns: 1fr;
             }
@@ -368,7 +383,31 @@
         <div class="error" id="errorMessage"></div>
         <div class="success" id="successMessage"></div>
 
+        <!-- NUEVA SECCIÓN: Preview inmediato al subir imagen -->
+        <section class="preview-section" id="previewSection">
+            <h2>📋 Vista Previa - Imagen Original</h2>
+            <div class="preview-grid">
+                <div class="image-container">
+                    <h3>📸 Imagen Original Subida</h3>
+                    <img id="originalImagePreview" src="" alt="Imagen original">
+                </div>
+
+                <div class="tech-specs">
+                    <h3>📊 Datos Técnicos Originales (Detección Automática)</h3>
+                    <div class="specs-grid" id="originalSpecsPreview">
+                        <!-- Datos técnicos se llenarán aquí inmediatamente -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="buttons">
+                <button class="btn-primary" id="processFromPreviewBtn">🚀 Proceder a Normalizar</button>
+            </div>
+        </section>
+
+        <!-- SECCIÓN ORIGINAL: Resultados del procesamiento -->
         <section class="results-section" id="resultsSection">
+            <h2>🎯 Resultado del Procesamiento</h2>
             <div class="results-grid">
                 <div class="image-container">
                     <h3>📸 Imagen Original</h3>
@@ -376,13 +415,13 @@
                     <div class="tech-specs" style="margin-top: 20px;">
                         <h4>📊 Datos Técnicos Originales</h4>
                         <div class="specs-grid" id="originalSpecs">
-                            <!-- Datos técnicos se llenarán aquí -->
+                            <!-- Se llenará con los mismos datos del preview -->
                         </div>
                     </div>
                 </div>
 
                 <div class="image-container">
-                    <h3>🎯 Imagen Normalizada</h3>
+                    <h3>🔄 Imagen Normalizada</h3>
                     <img id="processedImage" src="" alt="Imagen normalizada">
                     <div class="tech-specs" style="margin-top: 20px;">
                         <h4>📈 Datos Técnicos Procesados</h4>
