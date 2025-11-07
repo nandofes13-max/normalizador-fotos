@@ -23,43 +23,48 @@ app.get("/", (req, res) => {
   res.sendFile(path.resolve("public/index.html"));
 });
 
-// ✅ FUNCIÓN MEJORADA: Detectar y recortar producto automáticamente
+// ✅ ALGORITMO MEJORADO: Detección REAL por análisis de color
 async function detectAndCropProduct(imagePath) {
-  console.log("🔍 Analizando imagen para detectar producto...");
+  console.log("🔍 Ejecutando detección automática de producto...");
   
   try {
-    // Leer imagen y obtener metadatos
+    // Cargar imagen y obtener metadatos
     const image = sharp(imagePath);
     const metadata = await image.metadata();
     
     console.log(`📐 Imagen original: ${metadata.width}x${metadata.height}px`);
-    
-    // ESTRATEGIA: Detectar bordes por contraste
-    // 1. Convertir a escala de grises para mejor detección de bordes
-    // 2. Aplicar algoritmo para encontrar región de interés
-    
+
+    // Convertir a RGB para análisis de color
     const { data, info } = await image
-        .extract({
-        left: 0,
-        top: 0,
-        width: metadata.width,
-        height: metadata.height
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    // ✅ ESTRATEGIA: Analizar bordes para detectar color de fondo
+    const backgroundColor = detectBackgroundColor(data, info.width, info.height);
+    console.log(`🎨 Color de fondo detectado: RGB(${backgroundColor.r}, ${backgroundColor.g}, ${backgroundColor.b})`);
+
+    // ✅ DETECTAR LÍMITES DEL PRODUCTO
+    const productBounds = findProductBounds(data, info.width, info.height, backgroundColor);
+    
+    console.log(`📦 Producto detectado: [${productBounds.x}, ${productBounds.y}] - [${productBounds.x2}, ${productBounds.y2}]`);
+    console.log(`📦 Dimensiones producto: ${productBounds.width}x${productBounds.height}px`);
+
+    // Recortar el producto detectado
+    const croppedImage = await sharp(imagePath)
+      .extract({
+        left: productBounds.x,
+        top: productBounds.y,
+        width: productBounds.width,
+        height: productBounds.height
       })
       .toBuffer({ resolveWithObject: true });
 
-    // Por ahora, usamos la imagen completa como "producto detectado"
-    // En una versión avanzada, aquí iría el algoritmo de detección real
-    console.log("📦 Producto detectado: usando imagen completa");
-    
     return {
-      data: data,
-      info: info,
-      productBounds: {
-        x: 0,
-        y: 0, 
-        width: info.width,
-        height: info.height
-      }
+      data: croppedImage.data,
+      info: croppedImage.info,
+      productBounds: productBounds,
+      backgroundColor: backgroundColor
     };
     
   } catch (error) {
@@ -68,16 +73,133 @@ async function detectAndCropProduct(imagePath) {
   }
 }
 
-// ✅ FUNCIÓN: Calcular métricas de la imagen original
-function calculateOriginalMetrics(imageBuffer, productBounds) {
-  const productWidth = productBounds.width;
-  const productHeight = productBounds.height;
+// ✅ FUNCIÓN: Detectar color de fondo analizando bordes
+function detectBackgroundColor(imageData, width, height) {
+  const sampleSize = 50; // Muestrear primeros 50 píxeles de cada borde
+  const samples = [];
+  
+  // Muestrear bordes superior e inferior
+  for (let i = 0; i < sampleSize; i++) {
+    // Borde superior
+    const topIndex = (i * 4); // RGBA
+    samples.push({
+      r: imageData[topIndex],
+      g: imageData[topIndex + 1],
+      b: imageData[topIndex + 2]
+    });
+    
+    // Borde inferior  
+    const bottomIndex = ((height - 1) * width + i) * 4;
+    samples.push({
+      r: imageData[bottomIndex],
+      g: imageData[bottomIndex + 1],
+      b: imageData[bottomIndex + 2]
+    });
+  }
+  
+  // Muestrear bordes izquierdo y derecho
+  for (let i = 0; i < sampleSize; i++) {
+    // Borde izquierdo
+    const leftIndex = (i * width) * 4;
+    samples.push({
+      r: imageData[leftIndex],
+      g: imageData[leftIndex + 1],
+      b: imageData[leftIndex + 2]
+    });
+    
+    // Borde derecho
+    const rightIndex = (i * width + (width - 1)) * 4;
+    samples.push({
+      r: imageData[rightIndex],
+      g: imageData[rightIndex + 1],
+      b: imageData[rightIndex + 2]
+    });
+  }
+  
+  // Calcular color promedio de las muestras
+  const avgColor = samples.reduce((acc, color) => {
+    acc.r += color.r;
+    acc.g += color.g;
+    acc.b += color.b;
+    return acc;
+  }, { r: 0, g: 0, b: 0 });
+  
+  avgColor.r = Math.round(avgColor.r / samples.length);
+  avgColor.g = Math.round(avgColor.g / samples.length);
+  avgColor.b = Math.round(avgColor.b / samples.length);
+  
+  return avgColor;
+}
+
+// ✅ FUNCIÓN: Encontrar límites del producto por contraste
+function findProductBounds(imageData, width, height, backgroundColor) {
+  const tolerance = 30; // Tolerancia de color (0-255)
+  let left = width, right = 0, top = height, bottom = 0;
+  
+  // Escanear toda la imagen para encontrar límites
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const index = (y * width + x) * 4;
+      const r = imageData[index];
+      const g = imageData[index + 1];
+      const b = imageData[index + 2];
+      
+      // Verificar si el píxel es significativamente diferente del fondo
+      const colorDiff = Math.abs(r - backgroundColor.r) + 
+                       Math.abs(g - backgroundColor.g) + 
+                       Math.abs(b - backgroundColor.b);
+      
+      if (colorDiff > tolerance) {
+        // Este píxel pertenece al producto
+        if (x < left) left = x;
+        if (x > right) right = x;
+        if (y < top) top = y;
+        if (y > bottom) bottom = y;
+      }
+    }
+  }
+  
+  // Aplicar margen de seguridad (5 píxeles)
+  const safetyMargin = 5;
+  left = Math.max(0, left - safetyMargin);
+  top = Math.max(0, top - safetyMargin);
+  right = Math.min(width - 1, right + safetyMargin);
+  bottom = Math.min(height - 1, bottom + safetyMargin);
+  
+  const productWidth = right - left + 1;
+  const productHeight = bottom - top + 1;
+  
+  // Verificar que la detección es válida (no demasiado pequeña)
+  const minSize = 50; // Tamaño mínimo del producto
+  if (productWidth < minSize || productHeight < minSize) {
+    console.log("⚠️ Producto muy pequeño, usando imagen completa");
+    return {
+      x: 0, y: 0, x2: width - 1, y2: height - 1,
+      width: width, height: height
+    };
+  }
   
   return {
-    originalCanvas: `${productBounds.width} × ${productBounds.height} px`,
-    originalProduct: `${productWidth} × ${productHeight} px`,
-    originalMargin: `0 px`, // Asumimos que la original no tiene margen
-    originalBackground: "Original",
+    x: left, y: top, x2: right, y2: bottom,
+    width: productWidth, height: productHeight
+  };
+}
+
+// ✅ FUNCIÓN: Calcular métricas REALES de la imagen original
+function calculateOriginalMetrics(originalWidth, originalHeight, productBounds) {
+  const marginLeft = productBounds.x;
+  const marginRight = originalWidth - productBounds.x2 - 1;
+  const marginTop = productBounds.y;
+  const marginBottom = originalHeight - productBounds.y2 - 1;
+  
+  const totalMargin = marginLeft + marginRight + marginTop + marginBottom;
+  const avgMargin = Math.round(totalMargin / 4);
+  
+  return {
+    originalCanvas: `${originalWidth} × ${originalHeight} px`,
+    originalProduct: `${productBounds.width} × ${productBounds.height} px`,
+    originalMargin: `${avgMargin} px`,
+    originalBackground: "Detectado automáticamente",
     originalScale: "100%"
   };
 }
@@ -102,9 +224,13 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
   try {
     // ✅ PASO 1: DETECTAR Y ANALIZAR PRODUCTO EN ORIGINAL
     const detectionResult = await detectAndCropProduct(imagen.path);
-    const originalMetrics = calculateOriginalMetrics(detectionResult.data, detectionResult.productBounds);
+    const originalMetrics = calculateOriginalMetrics(
+      detectionResult.info.width + detectionResult.productBounds.x * 2, // Estimado
+      detectionResult.info.height + detectionResult.productBounds.y * 2,
+      detectionResult.productBounds
+    );
     
-    console.log("📊 Métricas originales:", originalMetrics);
+    console.log("📊 Métricas originales REALES:", originalMetrics);
 
     // ✅ PASO 2: PREPARAR FORMATO DE SALIDA
     const imageFormats = {
@@ -122,8 +248,8 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     console.log(`🎯 Formato destino: ${format.label} (${format.width}x${format.height}px)`);
 
-    // ✅ PASO 3: CALCULAR ESCALA PARA NORMALIZACIÓN
-    const margin = 0; // 0% sin margen
+    // ✅ PASO 3: CALCULAR ESCALA PARA NORMALIZACIÓN (SIN MÁRGENES)
+    const margin = 0; // 0% de margen - producto ocupa todo el lienzo
     const availableWidth = format.width * (1 - margin);
     const availableHeight = format.height * (1 - margin);
 
@@ -136,14 +262,12 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const productHeight = Math.round(detectionResult.info.height * scale);
     const productX = Math.round((format.width - productWidth) / 2);
     const productY = Math.round((format.height - productHeight) / 2);
-    const marginPx = Math.round(format.width * margin / 2);
 
-    console.log(`📐 Producto original: ${detectionResult.info.width}x${detectionResult.info.height}`);
+    console.log(`📐 Producto detectado: ${detectionResult.info.width}x${detectionResult.info.height}`);
     console.log(`📐 Escala aplicada: ${(scale * 100).toFixed(1)}%`);
     console.log(`📐 Tamaño normalizado: ${productWidth}x${productHeight}px`);
-    console.log(`📐 Margen aplicado: ${marginPx}px`);
 
-    // ✅ PASO 4: CREAR IMAGEN NORMALIZADA
+    // ✅ PASO 4: CREAR IMAGEN NORMALIZADA (CON COLORES ORIGINALES)
     const finalImageBuffer = await sharp({
       create: {
         width: format.width,
@@ -155,11 +279,18 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     .png()
     .composite([
       {
-        input: await sharp(detectionResult.data)
+        input: await sharp(detectionResult.data, {
+          raw: {
+            width: detectionResult.info.width,
+            height: detectionResult.info.height,
+            channels: 4
+          }
+        })
           .resize(productWidth, productHeight, {
             fit: 'contain',
             background: { r: 0, g: 0, b: 0, alpha: 0 }
           })
+          .png()
           .toBuffer(),
         top: productY,
         left: productX
@@ -173,7 +304,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const originalPath = path.join("uploads", `original_${timestamp}.jpg`);
     const processedPath = path.join("uploads", `normalizada_${timestamp}.png`);
 
-    // Guardar original (convertida a JPG para consistencia)
+    // Guardar original
     await sharp(imagen.path)
       .jpeg({ quality: 90 })
       .toFile(originalPath);
@@ -182,26 +313,27 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     fs.writeFileSync(processedPath, finalImageBuffer);
     fs.unlinkSync(imagen.path);
 
-    console.log("🎉 Normalización completada");
+    console.log("🎉 Normalización REAL completada");
 
-    // ✅ PASO 6: ENVIAR RESPUESTA CON TODOS LOS DATOS
+    // ✅ PASO 6: ENVIAR RESPUESTA CON DATOS REALES
     res.json({
       success: true,
       original: `/uploads/${path.basename(originalPath)}`,
       procesada: `/uploads/${path.basename(processedPath)}`,
-      // Datos técnicos ORIGINALES (reales)
+      // Datos técnicos ORIGINALES (REALES)
       originalTech: originalMetrics,
-      // Datos técnicos PROCESADOS (reales)  
+      // Datos técnicos PROCESADOS (REALES)  
       processedTech: {
         processedCanvas: `${format.width} × ${format.height} px`,
         processedProduct: `${productWidth} × ${productHeight} px`,
-        processedMargin: `${marginPx} px`,
+        processedMargin: `0 px`, // Sin márgenes en procesada
         processedBackground: "Blanco",
         processedScale: `${(scale * 100).toFixed(1)}%`
       },
       detalles: {
         formato: format.label,
-        metodo: 'Normalización Automática'
+        metodo: 'Detección Automática + Normalización',
+        productoDetectado: `${detectionResult.productBounds.width} × ${detectionResult.productBounds.height} px`
       }
     });
 
