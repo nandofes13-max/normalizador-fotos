@@ -273,10 +273,10 @@ class ImageNormalizer {
         // Mostrar sección de ajuste fino
         document.getElementById('adjustmentSection').style.display = 'block';
         
-        // Resetear escala a 100% para nuevo reprocesamiento
-        this.currentScale = 100;
-        document.getElementById('scaleSlider').value = '100';
-        document.getElementById('scaleValue').textContent = '100%';
+        // Resetear escala a 80% para nuevo reprocesamiento
+        this.currentScale = 80;
+        document.getElementById('scaleSlider').value = '80';
+        document.getElementById('scaleValue').textContent = '80%';
         
         // Scroll a resultados
         document.getElementById('resultsSection').scrollIntoView({ 
