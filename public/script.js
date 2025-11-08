@@ -4,7 +4,7 @@ class ImageNormalizer {
         this.currentFormat = null;
         this.originalTechData = null;
         this.currentProcessedImage = null;
-        this.currentScale = 100;
+        this.currentScale = 80;
         
         this.initializeEventListeners();
     }
