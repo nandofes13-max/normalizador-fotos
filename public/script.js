@@ -1,7 +1,7 @@
 class ImageNormalizer {
     constructor() {
         this.currentImage = null;
-        this.currentFormat = null;
+        this.currentFormat = "jumpsellerCuadrado"; // ← FORMATO POR DEFECTO
         this.originalTechData = null;
         this.currentProcessedImage = null;
         this.currentScale = 80; // ← Cambiado a 80% por defecto
