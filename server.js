@@ -201,7 +201,8 @@ app.post("/detectar", upload.single("imagen"), async (req, res) => {
 
     // Limpiar archivos temporales
     fs.unlinkSync(tempImagePath);
-    fs.unlinkSync(imagen.path);
+    // ⚠️ NO eliminar el archivo original aquí - se usará en /procesar
+    // fs.unlinkSync(imagen.path);
 
     console.log("✅ Detección completada - Enviando datos técnicos");
 
@@ -228,10 +229,10 @@ app.post("/detectar", upload.single("imagen"), async (req, res) => {
   }
 });
 
-// ✅ ENDPOINT: Procesar imagen con escala específica
+// ✅ ENDPOINT MEJORADO: Procesar imagen con escala específica
 app.post("/procesar", upload.single("imagen"), async (req, res) => {
   const imagen = req.file;
-  const { imageFormat, userScale = 80 } = req.body; // userScale por defecto 80%
+  const { imageFormat, userScale = 80 } = req.body;
 
   if (!imagen) {
     return res.status(400).json({ error: "No se recibió ninguna imagen" });
@@ -243,11 +244,18 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
   console.log("🛍️ Procesando imagen:", imagen.originalname);
   console.log("🎚️ Escala usuario:", `${userScale}%`);
+  console.log("📁 Archivo temporal:", imagen.path);
 
   try {
-    // PASO 1: DETECTAR PRODUCTO
+    // ✅ VERIFICAR que el archivo existe antes de procesar
+    if (!fs.existsSync(imagen.path)) {
+      throw new Error("El archivo temporal no existe. Posiblemente fue eliminado en una operación anterior.");
+    }
+
+    // PASO 1: DETECTAR PRODUCTO (usando la misma lógica que /detectar)
     const image = sharp(imagen.path);
     const metadata = await image.metadata();
+    console.log("📐 Dimensiones originales:", `${metadata.width}x${metadata.height}`);
 
     const tempImagePath = path.join("uploads", `temp_process_${Date.now()}.jpg`);
     await image.jpeg({ quality: 95 }).toFile(tempImagePath);
@@ -257,6 +265,8 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     const backgroundColor = detectBackgroundColor(data, info.width, info.height);
     const productBounds = findProductBounds(data, info.width, info.height, backgroundColor);
+
+    console.log("✅ Producto detectado:", productBounds);
 
     // Recortar producto
     const croppedBuffer = await sharp(imagen.path)
@@ -323,6 +333,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     console.log(`📐 Escala calculada: ${(finalScale * 100).toFixed(1)}%`);
     console.log(`📊 Porcentaje ocupado en lienzo: ${porcentajeOcupado.toFixed(1)}%`);
+    console.log(`🖼️ Tamaño producto final: ${productWidth}x${productHeight}px`);
 
     // PASO 4: PROCESAR IMAGEN FINAL
     const resizedProductBuffer = await sharp(croppedBuffer)
@@ -357,7 +368,11 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const processedPath = path.join("uploads", `normalizada_${timestamp}.png`);
 
     fs.writeFileSync(processedPath, finalImageBuffer);
-    fs.unlinkSync(imagen.path);
+    
+    // ✅ LIMPIAR: Ahora sí eliminar el archivo temporal original
+    if (fs.existsSync(imagen.path)) {
+      fs.unlinkSync(imagen.path);
+    }
 
     console.log("🎉 Procesamiento completado");
 
@@ -389,6 +404,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
   } catch (error) {
     console.error("💥 Error procesando imagen:", error);
     
+    // ✅ LIMPIAR en caso de error
     if (imagen && fs.existsSync(imagen.path)) {
       fs.unlinkSync(imagen.path);
     }
