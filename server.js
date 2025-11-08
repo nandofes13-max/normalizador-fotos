@@ -299,13 +299,18 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const productWidth = Math.round(productBounds.width * finalScale);
     const productHeight = Math.round(productBounds.height * finalScale);
     
+    // ✅ VALIDACIÓN: Verificar si el producto excede el lienzo
+    if (productWidth > format.width || productHeight > format.height) {
+      throw new Error(
+        `El producto con escala ${userScale}% es demasiado grande para el formato ${format.label}. ` +
+        `Reduce la escala para que el producto (${productWidth}×${productHeight}px) ` +
+        `quepa en el lienzo (${format.width}×${format.height}px).`
+      );
+    }
+    
     // Calcular posición centrada
     const productX = Math.round((format.width - productWidth) / 2);
     const productY = Math.round((format.height - productHeight) / 2);
-
-    // ✅ DEBUG TEMPORAL
-    console.log(`🔍 DEBUG: Lienzo=${format.width}x${format.height} | Producto=${productWidth}x${productHeight} | Posición=${productX},${productY}`);
-    console.log(`🔍 DEBUG: ¿Producto > Lienzo? Ancho: ${productWidth > format.width ? 'SÍ' : 'no'} | Alto: ${productHeight > format.height ? 'SÍ' : 'no'}`);
     
     // ✅ NUEVO: Calcular márgenes individuales del resultado
     const marginLeft = productX;
