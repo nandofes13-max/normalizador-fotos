@@ -243,6 +243,11 @@ class ImageNormalizer {
     }
 
     async reprocessImage() {
+        console.log('🔍 DEBUG: Click en reprocessImage');
+        console.log('🔍 DEBUG: currentScale =', this.currentScale);
+        console.log('🔍 DEBUG: currentFormat =', this.currentFormat);
+        console.log('🔍 DEBUG: currentImage =', this.currentImage ? 'SÍ' : 'NO');
+        
         if (!this.currentImage || !this.currentFormat) {
             this.showError('No hay imagen para reprocesar.');
             return;
@@ -263,6 +268,8 @@ class ImageNormalizer {
     }
 
     async sendProcessRequest(scale) {
+        console.log('🔍 DEBUG: Enviando solicitud con escala =', scale);
+        
         const formData = new FormData();
         formData.append('imagen', this.currentImage);
         formData.append('imageFormat', this.currentFormat);
