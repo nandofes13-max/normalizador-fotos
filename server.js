@@ -228,7 +228,7 @@ app.post("/detectar", upload.single("imagen"), async (req, res) => {
   }
 });
 
-// ✅ ENDPOINT MEJORADO: Procesar imagen con escala específica CORREGIDA
+// ✅ ENDPOINT MEJORADO: Procesar imagen con escala específica CORREGIDA + FILTROS AUTOMÁTICOS
 app.post("/procesar", upload.single("imagen"), async (req, res) => {
   const imagen = req.file;
   const { imageFormat, userScale = 80 } = req.body;
@@ -266,7 +266,9 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     console.log("✅ Producto detectado:", productBounds);
 
-    // Recortar producto
+    // Recortar producto y APLICAR FILTROS AUTOMÁTICOS DE CALIDAD
+    console.log("🎨 Aplicando filtros automáticos de calidad...");
+    
     const croppedBuffer = await sharp(imagen.path)
       .extract({
         left: productBounds.x,
@@ -274,6 +276,22 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         width: productBounds.width,
         height: productBounds.height
       })
+      // ✅ FILTROS AUTOMÁTICOS PARA ECOMMERCE
+      .modulate({
+        brightness: 1.10,    // +10% más brillo
+        saturation: 1.18,    // +18% colores más vibrantes
+        contrast: 1.12       // +12% más contraste
+      })
+      .gamma(1.08)           // Mejora medios tonos
+      .sharpen({
+        sigma: 1.2,          // Enfoque profesional
+        m1: 1.5,
+        m2: 0.4,
+        x1: 2,
+        y2: 10,
+        y3: 20
+      })
+      .median(3)             // Reducción de ruido suave
       .png()
       .toBuffer();
 
@@ -347,9 +365,10 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     console.log(`🖼️ Tamaño producto final: ${productWidth}x${productHeight}px`);
     console.log(`📍 Posición: (${productX}, ${productY})`);
 
-    // PASO 3: PROCESAR IMAGEN FINAL
+    // PASO 3: PROCESAR IMAGEN FINAL con kernel de alta calidad
     const resizedProductBuffer = await sharp(croppedBuffer)
       .resize(productWidth, productHeight, {
+        kernel: 'lanczos3',  // ✅ Algoritmo de alta calidad
         fit: 'contain',
         background: { r: 255, g: 255, b: 255 }
       })
@@ -386,7 +405,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       fs.unlinkSync(imagen.path);
     }
 
-    console.log("🎉 Procesamiento completado");
+    console.log("🎉 Procesamiento completado con mejora automática de calidad");
 
     // PASO 5: ENVIAR RESPUESTA
     res.json({
@@ -406,9 +425,10 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       },
       detalles: {
         formato: format.label,
-        metodo: 'Detección Automática + Normalización',
+        metodo: 'Detección Automática + Normalización + Mejora de Calidad',
         productoDetectado: `${productBounds.width} × ${productBounds.height} px`,
-        escalaAplicada: `${(escalaFinal * 100).toFixed(1)}%`
+        escalaAplicada: `${(escalaFinal * 100).toFixed(1)}%`,
+        mejorasAplicadas: 'Brillo +10%, Saturación +18%, Contraste +12%, Enfoque profesional, Reducción de ruido'
       }
     });
 
