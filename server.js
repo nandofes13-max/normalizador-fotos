@@ -302,6 +302,10 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     // Calcular posición centrada
     const productX = Math.round((format.width - productWidth) / 2);
     const productY = Math.round((format.height - productHeight) / 2);
+
+    // ✅ DEBUG TEMPORAL
+    console.log(`🔍 DEBUG: Lienzo=${format.width}x${format.height} | Producto=${productWidth}x${productHeight} | Posición=${productX},${productY}`);
+    console.log(`🔍 DEBUG: ¿Producto > Lienzo? Ancho: ${productWidth > format.width ? 'SÍ' : 'no'} | Alto: ${productHeight > format.height ? 'SÍ' : 'no'}`);
     
     // ✅ NUEVO: Calcular márgenes individuales del resultado
     const marginLeft = productX;
