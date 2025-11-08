@@ -289,7 +289,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     // ✅ NUEVO CÁLCULO: ESCALA PARA OCUPAR X% DEL ÁREA DEL LIENZO
     const areaLienzo = format.width * format.height;
-    const porcentajeDeseado = parseFloat(userScale) / 100; // 80% = 0.8
+    const porcentajeDeseado = parseFloat(userScale) / 100;
     const areaProductoDeseada = areaLienzo * porcentajeDeseado;
     const areaProductoOriginal = productBounds.width * productBounds.height;
 
@@ -319,7 +319,6 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const marginBottom = format.height - productY - productHeight;
 
     // ✅ NUEVO: Calcular porcentaje de área ocupada en el LIENZO ELEGIDO
-    const areaLienzo = format.width * format.height;
     const areaProducto = productWidth * productHeight;
     const porcentajeOcupado = (areaProducto / areaLienzo) * 100;
 
