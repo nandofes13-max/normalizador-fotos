@@ -202,7 +202,6 @@ app.post("/detectar", upload.single("imagen"), async (req, res) => {
     // Limpiar archivos temporales
     fs.unlinkSync(tempImagePath);
     // ⚠️ NO eliminar el archivo original aquí - se usará en /procesar
-    // fs.unlinkSync(imagen.path);
 
     console.log("✅ Detección completada - Enviando datos técnicos");
 
@@ -229,7 +228,7 @@ app.post("/detectar", upload.single("imagen"), async (req, res) => {
   }
 });
 
-// ✅ ENDPOINT MEJORADO: Procesar imagen con escala específica
+// ✅ ENDPOINT MEJORADO: Procesar imagen con escala específica CORREGIDA
 app.post("/procesar", upload.single("imagen"), async (req, res) => {
   const imagen = req.file;
   const { imageFormat, userScale = 80 } = req.body;
@@ -244,7 +243,6 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
   console.log("🛍️ Procesando imagen:", imagen.originalname);
   console.log("🎚️ Escala usuario:", `${userScale}%`);
-  console.log("📁 Archivo temporal:", imagen.path);
 
   try {
     // ✅ VERIFICAR que el archivo existe antes de procesar
@@ -252,7 +250,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       throw new Error("El archivo temporal no existe. Posiblemente fue eliminado en una operación anterior.");
     }
 
-    // PASO 1: DETECTAR PRODUCTO (usando la misma lógica que /detectar)
+    // PASO 1: DETECTAR PRODUCTO
     const image = sharp(imagen.path);
     const metadata = await image.metadata();
     console.log("📐 Dimensiones originales:", `${metadata.width}x${metadata.height}`);
@@ -297,45 +295,59 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       throw new Error(`Formato no válido: ${imageFormat}`);
     }
 
-    // ✅ CÁLCULO CORREGIDO: Escala para ocupar X% del área PERO sin exceder el lienzo
-    const areaLienzo = format.width * format.height;
-    const porcentajeDeseado = parseFloat(userScale) / 100;
-    const areaProductoDeseada = areaLienzo * porcentajeDeseado;
-    const areaProductoOriginal = productBounds.width * productBounds.height;
-
-    // Calcular escala base para área deseada
-    const escalaArea = Math.sqrt(areaProductoDeseada / areaProductoOriginal);
-
-    // Calcular escala máxima para caber en el lienzo (sin exceder)
+    // ✅ CÁLCULO CORREGIDO: Escala basada en dimensión principal
+    const userScaleFactor = parseFloat(userScale) / 100;
+    
+    // Calcular escala para que la dimensión principal ocupe el porcentaje del lienzo
+    const aspectRatioProducto = productBounds.width / productBounds.height;
+    const aspectRatioLienzo = format.width / format.height;
+    
+    let escalaFinal;
+    
+    if (aspectRatioProducto > aspectRatioLienzo) {
+      // Producto más ancho - escalar por ancho
+      const anchoDeseado = format.width * userScaleFactor;
+      escalaFinal = anchoDeseado / productBounds.width;
+      console.log(`📏 Escalando por ANCHO: ${anchoDeseado.toFixed(0)}px`);
+    } else {
+      // Producto más alto - escalar por alto
+      const altoDeseado = format.height * userScaleFactor;
+      escalaFinal = altoDeseado / productBounds.height;
+      console.log(`📏 Escalando por ALTO: ${altoDeseado.toFixed(0)}px`);
+    }
+    
+    // Limitar escala máxima para que no exceda el lienzo
     const escalaMaxAncho = format.width / productBounds.width;
     const escalaMaxAlto = format.height / productBounds.height;
     const escalaMaxima = Math.min(escalaMaxAncho, escalaMaxAlto);
-
-    // Usar la MENOR de las dos escalas (área deseada vs límite físico)
-    const finalScale = Math.min(escalaArea, escalaMaxima);
-
-    const productWidth = Math.round(productBounds.width * finalScale);
-    const productHeight = Math.round(productBounds.height * finalScale);
+    
+    escalaFinal = Math.min(escalaFinal, escalaMaxima);
+    
+    // Calcular dimensiones finales
+    const productWidth = Math.round(productBounds.width * escalaFinal);
+    const productHeight = Math.round(productBounds.height * escalaFinal);
     
     // Calcular posición centrada
     const productX = Math.round((format.width - productWidth) / 2);
     const productY = Math.round((format.height - productHeight) / 2);
     
-    // ✅ NUEVO: Calcular márgenes individuales del resultado
+    // Calcular márgenes individuales
     const marginLeft = productX;
     const marginRight = format.width - productX - productWidth;
     const marginTop = productY;
     const marginBottom = format.height - productY - productHeight;
 
-    // ✅ NUEVO: Calcular porcentaje de área ocupada en el LIENZO ELEGIDO
+    // Calcular porcentaje de área ocupada REAL
+    const areaLienzo = format.width * format.height;
     const areaProducto = productWidth * productHeight;
     const porcentajeOcupado = (areaProducto / areaLienzo) * 100;
 
-    console.log(`📐 Escala calculada: ${(finalScale * 100).toFixed(1)}%`);
-    console.log(`📊 Porcentaje ocupado en lienzo: ${porcentajeOcupado.toFixed(1)}%`);
+    console.log(`📐 Escala aplicada: ${(escalaFinal * 100).toFixed(1)}%`);
+    console.log(`📊 Porcentaje área ocupada: ${porcentajeOcupado.toFixed(1)}%`);
     console.log(`🖼️ Tamaño producto final: ${productWidth}x${productHeight}px`);
+    console.log(`📍 Posición: (${productX}, ${productY})`);
 
-    // PASO 4: PROCESAR IMAGEN FINAL
+    // PASO 3: PROCESAR IMAGEN FINAL
     const resizedProductBuffer = await sharp(croppedBuffer)
       .resize(productWidth, productHeight, {
         fit: 'contain',
@@ -363,20 +375,20 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     .png()
     .toBuffer();
 
-    // PASO 5: GUARDAR RESULTADOS
+    // PASO 4: GUARDAR RESULTADOS
     const timestamp = Date.now();
     const processedPath = path.join("uploads", `normalizada_${timestamp}.png`);
 
     fs.writeFileSync(processedPath, finalImageBuffer);
     
-    // ✅ LIMPIAR: Ahora sí eliminar el archivo temporal original
+    // LIMPIAR archivo temporal original
     if (fs.existsSync(imagen.path)) {
       fs.unlinkSync(imagen.path);
     }
 
     console.log("🎉 Procesamiento completado");
 
-    // PASO 6: ENVIAR RESPUESTA MEJORADA
+    // PASO 5: ENVIAR RESPUESTA
     res.json({
       success: true,
       procesada: `/uploads/${path.basename(processedPath)}`,
@@ -384,27 +396,25 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       processedTech: {
         processedCanvas: `${format.width} × ${format.height} px`,
         processedProduct: `${productWidth} × ${productHeight} px`,
-        // ✅ MÁRGENES INDIVIDUALES DEL RESULTADO
         marginLeft: `${marginLeft} px`,
         marginRight: `${marginRight} px`,
         marginTop: `${marginTop} px`, 
         marginBottom: `${marginBottom} px`,
         processedBackground: "Blanco",
-        // ✅ ESCALA NORMALIZADA (porcentaje de área ocupada)
         processedScale: `${porcentajeOcupado.toFixed(1)}%`,
         userScale: `${userScale}%`
       },
       detalles: {
         formato: format.label,
         metodo: 'Detección Automática + Normalización',
-        productoDetectado: `${productBounds.width} × ${productBounds.height} px`
+        productoDetectado: `${productBounds.width} × ${productBounds.height} px`,
+        escalaAplicada: `${(escalaFinal * 100).toFixed(1)}%`
       }
     });
 
   } catch (error) {
     console.error("💥 Error procesando imagen:", error);
     
-    // ✅ LIMPIAR en caso de error
     if (imagen && fs.existsSync(imagen.path)) {
       fs.unlinkSync(imagen.path);
     }
