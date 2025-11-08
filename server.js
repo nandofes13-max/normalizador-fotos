@@ -287,26 +287,25 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       throw new Error(`Formato no válido: ${imageFormat}`);
     }
 
-    // ✅ NUEVO CÁLCULO: ESCALA PARA OCUPAR X% DEL ÁREA DEL LIENZO
+    // ✅ CÁLCULO CORREGIDO: Escala para ocupar X% del área PERO sin exceder el lienzo
     const areaLienzo = format.width * format.height;
     const porcentajeDeseado = parseFloat(userScale) / 100;
     const areaProductoDeseada = areaLienzo * porcentajeDeseado;
     const areaProductoOriginal = productBounds.width * productBounds.height;
 
-    // Calcular escala para ocupar exactamente el porcentaje deseado
-    const finalScale = Math.sqrt(areaProductoDeseada / areaProductoOriginal);
+    // Calcular escala base para área deseada
+    const escalaArea = Math.sqrt(areaProductoDeseada / areaProductoOriginal);
+
+    // Calcular escala máxima para caber en el lienzo (sin exceder)
+    const escalaMaxAncho = format.width / productBounds.width;
+    const escalaMaxAlto = format.height / productBounds.height;
+    const escalaMaxima = Math.min(escalaMaxAncho, escalaMaxAlto);
+
+    // Usar la MENOR de las dos escalas (área deseada vs límite físico)
+    const finalScale = Math.min(escalaArea, escalaMaxima);
 
     const productWidth = Math.round(productBounds.width * finalScale);
     const productHeight = Math.round(productBounds.height * finalScale);
-    
-    // ✅ VALIDACIÓN: Verificar si el producto excede el lienzo
-    if (productWidth > format.width || productHeight > format.height) {
-      throw new Error(
-        `El producto con escala ${userScale}% es demasiado grande para el formato ${format.label}. ` +
-        `Reduce la escala para que el producto (${productWidth}×${productHeight}px) ` +
-        `quepa en el lienzo (${format.width}×${format.height}px).`
-      );
-    }
     
     // Calcular posición centrada
     const productX = Math.round((format.width - productWidth) / 2);
