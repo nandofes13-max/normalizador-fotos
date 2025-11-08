@@ -149,9 +149,22 @@ class ImageNormalizer {
                 <div class="spec-label">Producto Detectado</div>
                 <div class="spec-value">${techData.originalProduct}</div>
             </div>
+            <!-- MÁRGENES INDIVIDUALES -->
             <div class="spec-item">
-                <div class="spec-label">Margen Promedio</div>
-                <div class="spec-value">${techData.originalMargin}</div>
+                <div class="spec-label">Margen Izquierdo</div>
+                <div class="spec-value">${techData.marginLeft}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Margen Derecho</div>
+                <div class="spec-value">${techData.marginRight}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Margen Superior</div>
+                <div class="spec-value">${techData.marginTop}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Margen Inferior</div>
+                <div class="spec-value">${techData.marginBottom}</div>
             </div>
             <div class="spec-item">
                 <div class="spec-label">Fondo Detectado</div>
@@ -282,9 +295,22 @@ class ImageNormalizer {
                 <div class="spec-label">Producto Procesado</div>
                 <div class="spec-value">${techData.processedProduct}</div>
             </div>
+            <!-- MÁRGENES INDIVIDUALES DEL RESULTADO -->
             <div class="spec-item">
-                <div class="spec-label">Margen Aplicado</div>
-                <div class="spec-value">${techData.processedMargin}</div>
+                <div class="spec-label">Margen Izquierdo</div>
+                <div class="spec-value">${techData.marginLeft}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Margen Derecho</div>
+                <div class="spec-value">${techData.marginRight}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Margen Superior</div>
+                <div class="spec-value">${techData.marginTop}</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-label">Margen Inferior</div>
+                <div class="spec-value">${techData.marginBottom}</div>
             </div>
             <div class="spec-item">
                 <div class="spec-label">Fondo Final</div>
