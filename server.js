@@ -274,6 +274,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     // PASO 2: PREPARAR FORMATO
     const imageFormats = {
+      jumpsellerCuadrado: { width: 540, height: 540, label: "Jumpseller Cuadrado" }, // ← NUEVO
       proportion65: { width: 1200, height: 1000, label: "Proporción 6:5" },
       square:       { width: 527, height: 527, label: "Cuadrado 1:1" },
       portrait:     { width: 527, height: 702, label: "Retrato 3:4" },
