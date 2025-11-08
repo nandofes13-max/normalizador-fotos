@@ -4,7 +4,7 @@ class ImageNormalizer {
         this.currentFormat = null;
         this.originalTechData = null;
         this.currentProcessedImage = null;
-        this.currentScale = 80;
+        this.currentScale = 80; // ← Cambiado a 80% por defecto
         
         this.initializeEventListeners();
     }
@@ -34,6 +34,20 @@ class ImageNormalizer {
         document.getElementById('scaleSlider').addEventListener('input', (e) => {
             this.currentScale = parseInt(e.target.value);
             document.getElementById('scaleValue').textContent = `${this.currentScale}%`;
+            document.getElementById('manualScaleInput').value = this.currentScale; // ← Sincronizar con campo manual
+        });
+
+        // ✅ NUEVO: Campo de escala manual
+        document.getElementById('manualScaleInput').addEventListener('change', (e) => {
+            let value = parseInt(e.target.value);
+            // Validar rango
+            if (value < 25) value = 25;
+            if (value > 200) value = 200;
+            
+            this.currentScale = value;
+            document.getElementById('scaleSlider').value = value;
+            document.getElementById('scaleValue').textContent = `${value}%`;
+            e.target.value = value; // Actualizar campo si se corrigió
         });
     }
 
@@ -277,6 +291,7 @@ class ImageNormalizer {
         this.currentScale = 80;
         document.getElementById('scaleSlider').value = '80';
         document.getElementById('scaleValue').textContent = '80%';
+        document.getElementById('manualScaleInput').value = '80';
         
         // Scroll a resultados
         document.getElementById('resultsSection').scrollIntoView({ 
