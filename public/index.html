@@ -441,15 +441,23 @@
                 <p>Ajusta el tamaño del producto en la imagen normalizada:</p>
                 
                 <div class="scale-control">
-                    <div class="scale-value" id="scaleValue">100%</div>
+                    <div class="scale-value" id="scaleValue">80%</div>
                     <input type="range" class="scale-slider" id="scaleSlider" 
-                           min="25" max="200" value="100" step="1">
+                           min="25" max="200" value="80" step="1">
                     <div class="scale-labels">
                         <span>25% (Pequeño)</span>
-                        <span>100% (Automático)</span>
+                        <span>80% (Automático)</span>
                         <span>200% (Grande)</span>
                     </div>
                 </div>
+                
+                <!-- ✅ NUEVO: Campo de escala manual -->
+    <div class="manual-scale" style="margin-top: 15px; text-align: center;">
+        <label for="manualScaleInput" style="display: block; margin-bottom: 8px; font-weight: 600;">O ingresa el valor manualmente:</label>
+        <input type="number" id="manualScaleInput" min="25" max="200" value="80" 
+               style="padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 6px; width: 100px; text-align: center; font-size: 1em;">
+        <span style="margin-left: 5px; font-weight: 600;">%</span>
+    </div>
 
                 <div class="buttons">
                     <button class="btn-primary" id="reprocessBtn">🔄 Reprocesar con esta escala</button>
