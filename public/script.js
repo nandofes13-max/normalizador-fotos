@@ -7,10 +7,10 @@ class ImageNormalizer {
         this.currentScale = 80; // ← ESCALA POR DEFECTO 80%
         
         this.initializeEventListeners();
-        this.selectDefaultFormat(); // ← NUEVO: Seleccionar visualmente el formato por defecto
+        this.selectDefaultFormat(); // ← Seleccionar visualmente el formato por defecto
     }
 
-    // ✅ NUEVA FUNCIÓN: Seleccionar visualmente el formato por defecto
+    // ✅ FUNCIÓN: Seleccionar visualmente el formato por defecto
     selectDefaultFormat() {
         const defaultFormat = document.querySelector('[data-format="jumpsellerCuadrado"]');
         if (defaultFormat) {
@@ -248,6 +248,12 @@ class ImageNormalizer {
         console.log('🔍 DEBUG: currentFormat =', this.currentFormat);
         console.log('🔍 DEBUG: currentImage =', this.currentImage ? 'SÍ' : 'NO');
         
+        // Verificar valores de los controles UI para debugging
+        const sliderValue = document.getElementById('scaleSlider').value;
+        const manualInputValue = document.getElementById('manualScaleInput').value;
+        console.log('🔍 DEBUG: Slider value =', sliderValue);
+        console.log('🔍 DEBUG: Manual input value =', manualInputValue);
+        
         if (!this.currentImage || !this.currentFormat) {
             this.showError('No hay imagen para reprocesar.');
             return;
@@ -303,11 +309,8 @@ class ImageNormalizer {
         // Mostrar sección de ajuste fino
         document.getElementById('adjustmentSection').style.display = 'block';
         
-        // Resetear escala a 80% para nuevo reprocesamiento
-        this.currentScale = 80;
-        document.getElementById('scaleSlider').value = '80';
-        document.getElementById('scaleValue').textContent = '80%';
-        document.getElementById('manualScaleInput').value = '80';
+        // ✅ CORRECCIÓN: Eliminado el reset automático de escala
+        // El usuario mantiene la escala que eligió para reprocesamientos posteriores
         
         // Scroll a resultados
         document.getElementById('resultsSection').scrollIntoView({ 
