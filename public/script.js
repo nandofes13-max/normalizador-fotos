@@ -4,9 +4,18 @@ class ImageNormalizer {
         this.currentFormat = "jumpsellerCuadrado"; // ← FORMATO POR DEFECTO
         this.originalTechData = null;
         this.currentProcessedImage = null;
-        this.currentScale = 80; // ← Cambiado a 80% por defecto
+        this.currentScale = 80; // ← ESCALA POR DEFECTO 80%
         
         this.initializeEventListeners();
+        this.selectDefaultFormat(); // ← NUEVO: Seleccionar visualmente el formato por defecto
+    }
+
+    // ✅ NUEVA FUNCIÓN: Seleccionar visualmente el formato por defecto
+    selectDefaultFormat() {
+        const defaultFormat = document.querySelector('[data-format="jumpsellerCuadrado"]');
+        if (defaultFormat) {
+            defaultFormat.classList.add('selected');
+        }
     }
 
     initializeEventListeners() {
@@ -34,10 +43,10 @@ class ImageNormalizer {
         document.getElementById('scaleSlider').addEventListener('input', (e) => {
             this.currentScale = parseInt(e.target.value);
             document.getElementById('scaleValue').textContent = `${this.currentScale}%`;
-            document.getElementById('manualScaleInput').value = this.currentScale; // ← Sincronizar con campo manual
+            document.getElementById('manualScaleInput').value = this.currentScale;
         });
 
-        // ✅ NUEVO: Campo de escala manual
+        // Campo de escala manual
         document.getElementById('manualScaleInput').addEventListener('change', (e) => {
             let value = parseInt(e.target.value);
             // Validar rango
@@ -47,7 +56,7 @@ class ImageNormalizer {
             this.currentScale = value;
             document.getElementById('scaleSlider').value = value;
             document.getElementById('scaleValue').textContent = `${value}%`;
-            e.target.value = value; // Actualizar campo si se corrigió
+            e.target.value = value;
         });
     }
 
