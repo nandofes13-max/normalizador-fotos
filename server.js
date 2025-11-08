@@ -309,7 +309,13 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const marginTop = productY;
     const marginBottom = format.height - productY - productHeight;
 
+    // ✅ NUEVO: Calcular porcentaje de área ocupada en el LIENZO ELEGIDO
+    const areaLienzo = format.width * format.height;
+    const areaProducto = productWidth * productHeight;
+    const porcentajeOcupado = (areaProducto / areaLienzo) * 100;
+
     console.log(`📐 Base scale: ${(baseScale * 100).toFixed(1)}% + User scale: ${userScale}% = Final: ${(finalScale * 100).toFixed(1)}%`);
+    console.log(`📊 Porcentaje ocupado en lienzo: ${porcentajeOcupado.toFixed(1)}%`);
 
     // PASO 4: PROCESAR IMAGEN FINAL
     const resizedProductBuffer = await sharp(croppedBuffer)
@@ -362,7 +368,8 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         marginTop: `${marginTop} px`, 
         marginBottom: `${marginBottom} px`,
         processedBackground: "Blanco",
-        processedScale: `${(finalScale * 100).toFixed(1)}%`,
+        // ✅ ESCALA NORMALIZADA (porcentaje de área ocupada)
+        processedScale: `${porcentajeOcupado.toFixed(1)}%`,
         userScale: `${userScale}%`
       },
       detalles: {
