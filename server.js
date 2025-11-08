@@ -231,7 +231,7 @@ app.post("/detectar", upload.single("imagen"), async (req, res) => {
 // ✅ ENDPOINT: Procesar imagen con escala específica
 app.post("/procesar", upload.single("imagen"), async (req, res) => {
   const imagen = req.file;
-  const { imageFormat, userScale = 100 } = req.body; // userScale de 25 a 200
+  const { imageFormat, userScale = 80 } = req.body; // userScale por defecto 80%
 
   if (!imagen) {
     return res.status(400).json({ error: "No se recibió ninguna imagen" });
@@ -274,7 +274,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     // PASO 2: PREPARAR FORMATO
     const imageFormats = {
-      jumpsellerCuadrado: { width: 540, height: 540, label: "Jumpseller Cuadrado" }, // ← NUEVO
+      jumpsellerCuadrado: { width: 540, height: 540, label: "Jumpseller Cuadrado" },
       proportion65: { width: 1200, height: 1000, label: "Proporción 6:5" },
       square:       { width: 527, height: 527, label: "Cuadrado 1:1" },
       portrait:     { width: 527, height: 702, label: "Retrato 3:4" },
@@ -287,15 +287,14 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       throw new Error(`Formato no válido: ${imageFormat}`);
     }
 
-    // PASO 3: CALCULAR ESCALA CON AJUSTE USUARIO
-    const baseScale = Math.min(
-      format.width / productBounds.width,
-      format.height / productBounds.height
-    );
+    // ✅ NUEVO CÁLCULO: ESCALA PARA OCUPAR X% DEL ÁREA DEL LIENZO
+    const areaLienzo = format.width * format.height;
+    const porcentajeDeseado = parseFloat(userScale) / 100; // 80% = 0.8
+    const areaProductoDeseada = areaLienzo * porcentajeDeseado;
+    const areaProductoOriginal = productBounds.width * productBounds.height;
 
-    // Aplicar escala del usuario (25% = 0.25, 100% = 1.0, 200% = 2.0)
-    const userScaleFactor = parseFloat(userScale) / 100;
-    const finalScale = baseScale * userScaleFactor;
+    // Calcular escala para ocupar exactamente el porcentaje deseado
+    const finalScale = Math.sqrt(areaProductoDeseada / areaProductoOriginal);
 
     const productWidth = Math.round(productBounds.width * finalScale);
     const productHeight = Math.round(productBounds.height * finalScale);
@@ -324,7 +323,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     const areaProducto = productWidth * productHeight;
     const porcentajeOcupado = (areaProducto / areaLienzo) * 100;
 
-    console.log(`📐 Base scale: ${(baseScale * 100).toFixed(1)}% + User scale: ${userScale}% = Final: ${(finalScale * 100).toFixed(1)}%`);
+    console.log(`📐 Escala calculada: ${(finalScale * 100).toFixed(1)}%`);
     console.log(`📊 Porcentaje ocupado en lienzo: ${porcentajeOcupado.toFixed(1)}%`);
 
     // PASO 4: PROCESAR IMAGEN FINAL
