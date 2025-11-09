@@ -228,7 +228,7 @@ app.post("/detectar", upload.single("imagen"), async (req, res) => {
   }
 });
 
-// ✅ ENDPOINT MEJORADO: Procesar imagen con filtro "CRISTAL" MEJORADO
+// ✅ ENDPOINT ORIGINAL: Solo normalización SIN filtros de calidad
 app.post("/procesar", upload.single("imagen"), async (req, res) => {
   const imagen = req.file;
   const { imageFormat, userScale = 80 } = req.body;
@@ -266,9 +266,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     console.log("✅ Producto detectado:", productBounds);
 
-    // Recortar producto y APLICAR FILTRO "CRISTAL" MEJORADO
-    console.log("🎨 Aplicando filtro 'Cristal' mejorado (preserva texto)...");
-    
+    // Recortar producto SIN FILTROS - SOLO NORMALIZACIÓN
     const croppedBuffer = await sharp(imagen.path)
       .extract({
         left: productBounds.x,
@@ -276,25 +274,6 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         width: productBounds.width,
         height: productBounds.height
       })
-      // ✅ MEJORAS DE COLOR (mantenemos estas - no afectan texto)
-      .modulate({
-        brightness: 1.15,    // +15% más brillo
-        saturation: 1.40,    // +40% colores vibrantes
-        contrast: 1.35       // +35% contraste
-      })
-      .gamma(1.20)           // Mejora medios tonos
-      
-      // ✅ ENFOQUE MÁS SUAVE PARA PRESERVAR TEXTO
-      .sharpen({
-        sigma: 1.5,          // REDUCIDO: Menos agresivo
-        m1: 1.5,             // REDUCIDO: Menos efecto en bordes
-        m2: 0.3,             // REDUCIDO: Menos efecto en áreas planas
-        x1: 2,
-        y2: 10,
-        y3: 20
-      })
-      
-      .median(3)             // Reducción de ruido moderada
       .png()
       .toBuffer();
 
@@ -368,7 +347,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     console.log(`🖼️ Tamaño producto final: ${productWidth}x${productHeight}px`);
     console.log(`📍 Posición: (${productX}, ${productY})`);
 
-    // PASO 3: PROCESAR IMAGEN FINAL con kernel de alta calidad
+    // PASO 3: PROCESAR IMAGEN FINAL
     const resizedProductBuffer = await sharp(croppedBuffer)
       .resize(productWidth, productHeight, {
         kernel: 'lanczos3',  // ✅ Algoritmo de alta calidad
@@ -408,7 +387,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       fs.unlinkSync(imagen.path);
     }
 
-    console.log("🎉 Procesamiento completado con filtro 'Cristal' mejorado");
+    console.log("🎉 Procesamiento completado (solo normalización)");
 
     // PASO 5: ENVIAR RESPUESTA
     res.json({
@@ -428,10 +407,9 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       },
       detalles: {
         formato: format.label,
-        metodo: 'Detección Automática + Normalización + Filtro Cristal Mejorado',
+        metodo: 'Detección Automática + Normalización',
         productoDetectado: `${productBounds.width} × ${productBounds.height} px`,
-        escalaAplicada: `${(escalaFinal * 100).toFixed(1)}%`,
-        mejorasAplicadas: 'Filtro "Cristal Mejorado": Colores vibrantes + enfoque suave que preserva texto'
+        escalaAplicada: `${(escalaFinal * 100).toFixed(1)}%`
       }
     });
 
