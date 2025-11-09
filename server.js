@@ -228,7 +228,7 @@ app.post("/detectar", upload.single("imagen"), async (req, res) => {
   }
 });
 
-// ✅ ENDPOINT MEJORADO: Procesar imagen con filtro "CRISTAL" de Samsung
+// ✅ ENDPOINT MEJORADO: Procesar imagen con filtro "CRISTAL" MEJORADO
 app.post("/procesar", upload.single("imagen"), async (req, res) => {
   const imagen = req.file;
   const { imageFormat, userScale = 80 } = req.body;
@@ -266,8 +266,8 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     console.log("✅ Producto detectado:", productBounds);
 
-    // Recortar producto y APLICAR FILTRO "CRISTAL"
-    console.log("🎨 Aplicando filtro 'Cristal' de Samsung...");
+    // Recortar producto y APLICAR FILTRO "CRISTAL" MEJORADO
+    console.log("🎨 Aplicando filtro 'Cristal' mejorado (preserva texto)...");
     
     const croppedBuffer = await sharp(imagen.path)
       .extract({
@@ -276,22 +276,25 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         width: productBounds.width,
         height: productBounds.height
       })
-      // ✅ FILTRO "CRISTAL" - MEJORA VISIBLE
+      // ✅ MEJORAS DE COLOR (mantenemos estas - no afectan texto)
       .modulate({
         brightness: 1.15,    // +15% más brillo
-        saturation: 1.40,    // +40% colores MUY vibrantes
-        contrast: 1.35       // +35% contraste fuerte
+        saturation: 1.40,    // +40% colores vibrantes
+        contrast: 1.35       // +35% contraste
       })
-      .gamma(1.20)           // Mejora dramática de medios tonos
+      .gamma(1.20)           // Mejora medios tonos
+      
+      // ✅ ENFOQUE MÁS SUAVE PARA PRESERVAR TEXTO
       .sharpen({
-        sigma: 3.0,          // Enfoque MUY fuerte
-        m1: 4,               // Ajuste agresivo de bordes
-        m2: 1,               // Ajuste de áreas planas  
-        x1: 3,
-        y2: 15,
-        y3: 30
+        sigma: 1.5,          // REDUCIDO: Menos agresivo
+        m1: 1.5,             // REDUCIDO: Menos efecto en bordes
+        m2: 0.3,             // REDUCIDO: Menos efecto en áreas planas
+        x1: 2,
+        y2: 10,
+        y3: 20
       })
-      .median(5)             // Reducción de ruido más fuerte
+      
+      .median(3)             // Reducción de ruido moderada
       .png()
       .toBuffer();
 
@@ -405,7 +408,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       fs.unlinkSync(imagen.path);
     }
 
-    console.log("🎉 Procesamiento completado con filtro 'Cristal'");
+    console.log("🎉 Procesamiento completado con filtro 'Cristal' mejorado");
 
     // PASO 5: ENVIAR RESPUESTA
     res.json({
@@ -425,10 +428,10 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       },
       detalles: {
         formato: format.label,
-        metodo: 'Detección Automática + Normalización + Filtro Cristal',
+        metodo: 'Detección Automática + Normalización + Filtro Cristal Mejorado',
         productoDetectado: `${productBounds.width} × ${productBounds.height} px`,
         escalaAplicada: `${(escalaFinal * 100).toFixed(1)}%`,
-        mejorasAplicadas: 'Filtro "Cristal": Brillo +15%, Saturación +40%, Contraste +35%, Enfoque profesional'
+        mejorasAplicadas: 'Filtro "Cristal Mejorado": Colores vibrantes + enfoque suave que preserva texto'
       }
     });
 
