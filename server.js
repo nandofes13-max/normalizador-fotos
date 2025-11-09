@@ -228,7 +228,7 @@ app.post("/detectar", upload.single("imagen"), async (req, res) => {
   }
 });
 
-// ✅ ENDPOINT ACTUALIZADO: Con filtros para mejorar detección de fondos grises
+// ✅ ENDPOINT MEJORADO: Procesar imagen con filtros optimizados para 380px
 app.post("/procesar", upload.single("imagen"), async (req, res) => {
   const imagen = req.file;
   const { imageFormat, userScale = 80 } = req.body;
@@ -266,8 +266,8 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     console.log("✅ Producto detectado:", productBounds);
 
-    // Recortar producto CON FILTROS PARA MEJORAR DETECCIÓN
-    console.log("🎨 Aplicando filtros para mejorar detección...");
+    // Recortar producto con FILTROS OPTIMIZADOS PARA 380px
+    console.log("🎨 Aplicando filtros optimizados para 380px...");
     
     const croppedBuffer = await sharp(imagen.path)
       .extract({
@@ -276,12 +276,22 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         width: productBounds.width,
         height: productBounds.height
       })
-      // ✅ FILTROS SUAVES SOLO PARA MEJORAR DETECCIÓN
+      // ✅ FILTROS OPTIMIZADOS PARA LIENZO 380px
       .modulate({
-        contrast: 1.15    // +15% contraste para mejor separación fondo/producto
+        brightness: 1.15,    // +15% más brillo (antes 1.10)
+        saturation: 1.25,    // +25% colores más vibrantes (antes 1.18)
+        contrast: 1.20       // +20% más contraste (antes 1.12)
       })
-      .sharpen(0.3)       // Enfoque muy suave para definir bordes
-      .median(2)          // Reducción de ruido mínima
+      .gamma(1.08)           // Mejora medios tonos
+      .sharpen({
+        sigma: 1.2,          // Enfoque profesional
+        m1: 1.5,
+        m2: 0.4,
+        x1: 2,
+        y2: 10,
+        y3: 20
+      })
+      .median(3)             // Reducción de ruido suave
       .png()
       .toBuffer();
 
@@ -290,8 +300,8 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     // PASO 2: PREPARAR FORMATOS ACTUALIZADOS
     const imageFormats = {
-      jumpsellerCuadrado: { width: 380, height: 380, label: "Jumpseller Cuadrado (380×380)" }, // ✅ CORREGIDO
-      kyteCatalogo: { width: 400, height: 400, label: "Kyte Catálogo (400×400)" }, // ✅ NUEVO
+      jumpsellerCuadrado: { width: 380, height: 380, label: "Jumpseller Cuadrado (380×380)" },
+      kyteCatalogo: { width: 400, height: 400, label: "Kyte Catálogo (400×400)" },
       proportion65: { width: 1200, height: 1000, label: "Proporción 6:5 (1200×1000)" },
       square: { width: 527, height: 527, label: "Cuadrado 1:1 (527×527)" },
       portrait: { width: 527, height: 702, label: "Retrato 3:4 (527×702)" },
@@ -356,7 +366,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     console.log(`🖼️ Tamaño producto final: ${productWidth}x${productHeight}px`);
     console.log(`📍 Posición: (${productX}, ${productY})`);
 
-    // PASO 3: PROCESAR IMAGEN FINAL
+    // PASO 3: PROCESAR IMAGEN FINAL con kernel de alta calidad
     const resizedProductBuffer = await sharp(croppedBuffer)
       .resize(productWidth, productHeight, {
         kernel: 'lanczos3',  // ✅ Algoritmo de alta calidad
@@ -396,7 +406,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       fs.unlinkSync(imagen.path);
     }
 
-    console.log("🎉 Procesamiento completado con mejora de detección");
+    console.log("🎉 Procesamiento completado con filtros optimizados para 380px");
 
     // PASO 5: ENVIAR RESPUESTA
     res.json({
@@ -416,12 +426,10 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       },
       detalles: {
         formato: format.label,
-        metodo: 'Detección Automática + Normalización + Mejora de Detección',
+        metodo: 'Detección Automática + Normalización + Filtros Optimizados',
         productoDetectado: `${productBounds.width} × ${productBounds.height} px`,
         escalaAplicada: `${(escalaFinal * 100).toFixed(1)}%`,
-        plataformaOptimizada: imageFormat === 'jumpsellerCuadrado' ? 'Jumpseller' : 
-                            imageFormat === 'kyteCatalogo' ? 'Kyte' : 'Multiplataforma',
-        mejorasAplicadas: 'Contraste +15% para mejor detección de fondos'
+        mejorasAplicadas: 'Brillo +15%, Saturación +25%, Contraste +20% (optimizado para 380px)'
       }
     });
 
