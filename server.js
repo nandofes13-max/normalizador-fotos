@@ -228,7 +228,7 @@ app.post("/detectar", upload.single("imagen"), async (req, res) => {
   }
 });
 
-// ✅ ENDPOINT ORIGINAL: Solo normalización SIN filtros de calidad
+// ✅ ENDPOINT ACTUALIZADO: Con formatos optimizados para Jumpseller y Kyte
 app.post("/procesar", upload.single("imagen"), async (req, res) => {
   const imagen = req.file;
   const { imageFormat, userScale = 80 } = req.body;
@@ -280,14 +280,15 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     // Limpiar temporal
     fs.unlinkSync(tempImagePath);
 
-    // PASO 2: PREPARAR FORMATO
+    // PASO 2: PREPARAR FORMATOS ACTUALIZADOS
     const imageFormats = {
-      jumpsellerCuadrado: { width: 540, height: 540, label: "Jumpseller Cuadrado" },
-      proportion65: { width: 1200, height: 1000, label: "Proporción 6:5" },
-      square:       { width: 527, height: 527, label: "Cuadrado 1:1" },
-      portrait:     { width: 527, height: 702, label: "Retrato 3:4" },
-      landscape:    { width: 527, height: 296, label: "Apaisado 16:9" },
-      rectangular:  { width: 527, height: 395, label: "Rectangular 4:3" }
+      jumpsellerCuadrado: { width: 380, height: 380, label: "Jumpseller Cuadrado (380×380)" }, // ✅ CORREGIDO
+      kyteCatalogo: { width: 400, height: 400, label: "Kyte Catálogo (400×400)" }, // ✅ NUEVO
+      proportion65: { width: 1200, height: 1000, label: "Proporción 6:5 (1200×1000)" },
+      square: { width: 527, height: 527, label: "Cuadrado 1:1 (527×527)" },
+      portrait: { width: 527, height: 702, label: "Retrato 3:4 (527×702)" },
+      landscape: { width: 527, height: 296, label: "Apaisado 16:9 (527×296)" },
+      rectangular: { width: 527, height: 395, label: "Rectangular 4:3 (527×395)" }
     };
 
     const format = imageFormats[imageFormat];
@@ -387,7 +388,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       fs.unlinkSync(imagen.path);
     }
 
-    console.log("🎉 Procesamiento completado (solo normalización)");
+    console.log("🎉 Procesamiento completado con formatos optimizados");
 
     // PASO 5: ENVIAR RESPUESTA
     res.json({
@@ -409,7 +410,9 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         formato: format.label,
         metodo: 'Detección Automática + Normalización',
         productoDetectado: `${productBounds.width} × ${productBounds.height} px`,
-        escalaAplicada: `${(escalaFinal * 100).toFixed(1)}%`
+        escalaAplicada: `${(escalaFinal * 100).toFixed(1)}%`,
+        plataformaOptimizada: imageFormat === 'jumpsellerCuadrado' ? 'Jumpseller' : 
+                            imageFormat === 'kyteCatalogo' ? 'Kyte' : 'Multiplataforma'
       }
     });
 
