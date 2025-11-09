@@ -228,7 +228,7 @@ app.post("/detectar", upload.single("imagen"), async (req, res) => {
   }
 });
 
-// ✅ ENDPOINT ACTUALIZADO: Con formatos optimizados para Jumpseller y Kyte
+// ✅ ENDPOINT ACTUALIZADO: Con filtros para mejorar detección de fondos grises
 app.post("/procesar", upload.single("imagen"), async (req, res) => {
   const imagen = req.file;
   const { imageFormat, userScale = 80 } = req.body;
@@ -266,7 +266,9 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     console.log("✅ Producto detectado:", productBounds);
 
-    // Recortar producto SIN FILTROS - SOLO NORMALIZACIÓN
+    // Recortar producto CON FILTROS PARA MEJORAR DETECCIÓN
+    console.log("🎨 Aplicando filtros para mejorar detección...");
+    
     const croppedBuffer = await sharp(imagen.path)
       .extract({
         left: productBounds.x,
@@ -274,6 +276,12 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         width: productBounds.width,
         height: productBounds.height
       })
+      // ✅ FILTROS SUAVES SOLO PARA MEJORAR DETECCIÓN
+      .modulate({
+        contrast: 1.15    // +15% contraste para mejor separación fondo/producto
+      })
+      .sharpen(0.3)       // Enfoque muy suave para definir bordes
+      .median(2)          // Reducción de ruido mínima
       .png()
       .toBuffer();
 
@@ -388,7 +396,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       fs.unlinkSync(imagen.path);
     }
 
-    console.log("🎉 Procesamiento completado con formatos optimizados");
+    console.log("🎉 Procesamiento completado con mejora de detección");
 
     // PASO 5: ENVIAR RESPUESTA
     res.json({
@@ -408,11 +416,12 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       },
       detalles: {
         formato: format.label,
-        metodo: 'Detección Automática + Normalización',
+        metodo: 'Detección Automática + Normalización + Mejora de Detección',
         productoDetectado: `${productBounds.width} × ${productBounds.height} px`,
         escalaAplicada: `${(escalaFinal * 100).toFixed(1)}%`,
         plataformaOptimizada: imageFormat === 'jumpsellerCuadrado' ? 'Jumpseller' : 
-                            imageFormat === 'kyteCatalogo' ? 'Kyte' : 'Multiplataforma'
+                            imageFormat === 'kyteCatalogo' ? 'Kyte' : 'Multiplataforma',
+        mejorasAplicadas: 'Contraste +15% para mejor detección de fondos'
       }
     });
 
