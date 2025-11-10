@@ -60,7 +60,7 @@ function detectBackgroundColor(imageData, width, height) {
     samples.push({
       r: imageData[rightIndex],
       g: imageData[rightIndex + 1],
-      b: imageData[rightIndex + 2]
+      b: data[rightIndex + 2]
     });
   }
   
@@ -234,7 +234,8 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
   const { 
     imageFormat, 
     userScale = 80,
-    filter = "none"  // ← NUEVO: Recibir el filtro desde el frontend
+    filter = "none",
+    isInitialProcess = "false"  // ← NUEVO: recibir este parámetro
   } = req.body;
 
   if (!imagen) {
@@ -245,9 +246,12 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     return res.status(400).json({ error: "Seleccione el formato de imagen" });
   }
 
+  const isInitial = isInitialProcess === "true";
+  
   console.log("🛍️ Procesando imagen:", imagen.originalname);
   console.log("🎚️ Escala usuario:", `${userScale}%`);
   console.log("🎨 Filtro seleccionado:", filter);
+  console.log("🚀 Proceso inicial:", isInitial);
 
   try {
     // ✅ VERIFICAR que el archivo existe antes de procesar
@@ -274,16 +278,16 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     // PASO 2: APLICAR FILTROS ESTÉTICOS SEGÚN SELECCIÓN
     console.log("🎨 Aplicando filtro:", filter);
     
-    // Configuración de filtros
+    // Configuración de filtros - MODIFICADO para proceso inicial
     const filterConfigs = {
       none: {
-        brightness: 1.15,
-        saturation: 1.25,
-        contrast: 1.20,
-        gamma: 1.08,
-        sharpen: { sigma: 1.2, m1: 1.5, m2: 0.4, x1: 2, y2: 10, y3: 20 },
-        median: 3,
-        description: "Imagen normalizada sin efectos adicionales"
+        brightness: isInitial ? 1.0 : 1.15,  // ← Sin filtros en proceso inicial
+        saturation: isInitial ? 1.0 : 1.25,
+        contrast: isInitial ? 1.0 : 1.20,
+        gamma: isInitial ? 1.0 : 1.08,
+        sharpen: isInitial ? { sigma: 0 } : { sigma: 1.2, m1: 1.5, m2: 0.4, x1: 2, y2: 10, y3: 20 },
+        median: isInitial ? 0 : 3,
+        description: isInitial ? "Imagen normalizada sin efectos" : "Imagen normalizada sin efectos adicionales"
       },
       juno: {
         brightness: 1.25,
@@ -334,15 +338,20 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         top: productBounds.y,
         width: productBounds.width,
         height: productBounds.height
-      })
-      .modulate({
-        brightness: config.brightness,
-        saturation: config.saturation,
-        contrast: config.contrast
-      })
-      .gamma(config.gamma)
-      .sharpen(config.sharpen)
-      .median(config.median);
+      });
+
+    // ✅ SOLO APLICAR FILTROS SI NO ES PROCESO INICIAL O SI ES UN FILTRO ESPECÍFICO
+    if (!isInitial || filter !== "none") {
+      imagePipeline = imagePipeline
+        .modulate({
+          brightness: config.brightness,
+          saturation: config.saturation,
+          contrast: config.contrast
+        })
+        .gamma(config.gamma)
+        .sharpen(config.sharpen)
+        .median(config.median);
+    }
 
     // Aplicar tintes para filtros específicos
     if (config.tint) {
@@ -482,12 +491,13 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       },
       detalles: {
         formato: format.label,
-        metodo: `Detección Automática + Filtro ${filter.charAt(0).toUpperCase() + filter.slice(1)}`,
+        metodo: isInitial ? "Detección Automática + Normalización Básica" : `Detección Automática + Filtro ${filter.charAt(0).toUpperCase() + filter.slice(1)}`,
         productoDetectado: `${productBounds.width} × ${productBounds.height} px`,
         escalaAplicada: `${(escalaFinal * 100).toFixed(1)}%`,
         filtroAplicado: filter,
         descripcionFiltro: config.description,
-        configuracionFiltro: {
+        esProcesoInicial: isInitial,
+        configuracionFiltro: isInitial ? {} : {
           brillo: `${((config.brightness - 1) * 100).toFixed(0)}%`,
           saturacion: `${((config.saturation - 1) * 100).toFixed(0)}%`,
           contraste: `${((config.contrast - 1) * 100).toFixed(0)}%`
