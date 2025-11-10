@@ -68,7 +68,7 @@
         <div class="error" id="errorMessage"></div>
         <div class="success" id="successMessage"></div>
 
-        <!-- NUEVA SECCIÓN: Preview inmediato al subir imagen -->
+        <!-- SECCIÓN: Preview inmediato al subir imagen -->
         <section class="preview-section" id="previewSection">
             <h2>📋 Vista Previa - Imagen Original</h2>
             <div class="preview-grid">
@@ -90,7 +90,7 @@
             </div>
         </section>
 
-        <!-- SECCIÓN ORIGINAL: Resultados del procesamiento -->
+        <!-- SECCIÓN: Resultados del procesamiento -->
         <section class="results-section" id="resultsSection">
             <h2>🎯 Resultado del Procesamiento</h2>
             <div class="results-grid">
@@ -117,36 +117,46 @@
                 </div>
             </div>
 
+            <!-- SECCIÓN DE AJUSTES AVANZADOS CON BOTONES SEPARADOS -->
             <div class="adjustment-section" id="adjustmentSection">
-                <h3>🎛️ Ajuste Fino de Escala</h3>
-                <p>Ajusta el tamaño del producto en la imagen normalizada:</p>
+                <h3>🎛️ Ajustes Avanzados</h3>
                 
-                <div class="scale-control">
-                    <div class="scale-value" id="scaleValue">80%</div>
-                    <input type="range" class="scale-slider" id="scaleSlider" 
-                           min="25" max="200" value="80" step="1">
-                    <div class="scale-labels">
-                        <span>25% (Pequeño)</span>
-                        <span>80% (Automático)</span>
-                        <span>200% (Grande)</span>
+                <!-- SECCIÓN ESCALA -->
+                <div class="scale-section" style="margin-bottom: 25px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 1px solid #e2e8f0;">
+                    <h4>📏 Ajustar Tamaño del Producto</h4>
+                    <p style="margin-bottom: 15px; color: #666; font-size: 0.95em;">Modifica el tamaño del producto manteniendo los filtros actuales:</p>
+                    
+                    <div class="scale-control">
+                        <div class="scale-value" id="scaleValue">80%</div>
+                        <input type="range" class="scale-slider" id="scaleSlider" 
+                               min="25" max="200" value="80" step="1">
+                        <div class="scale-labels">
+                            <span>25% (Pequeño)</span>
+                            <span>80% (Automático)</span>
+                            <span>200% (Grande)</span>
+                        </div>
                     </div>
-                </div>
-                
-                <!-- Campo de escala manual -->
-                <div class="manual-scale" style="margin-top: 15px; text-align: center;">
-                    <label for="manualScaleInput" style="display: block; margin-bottom: 8px; font-weight: 600;">O ingresa el valor manualmente:</label>
-                    <input type="number" id="manualScaleInput" min="25" max="200" value="80" 
-                           style="padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 6px; width: 100px; text-align: center; font-size: 1em;">
-                    <span style="margin-left: 5px; font-weight: 600;">%</span>
+                    
+                    <div class="manual-scale">
+                        <label for="manualScaleInput" style="display: block; margin-bottom: 8px; font-weight: 600; color: #4a5568;">O ingresa el valor manualmente:</label>
+                        <input type="number" id="manualScaleInput" min="25" max="200" value="80" 
+                               style="padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 6px; width: 100px; text-align: center; font-size: 1em;">
+                        <span style="margin-left: 5px; font-weight: 600;">%</span>
+                    </div>
                 </div>
 
-                <!-- NUEVA SECCIÓN: FILTROS ESTÉTICOS -->
+                <!-- SECCIÓN FILTROS -->
                 <div class="filters-section">
-                    <div class="filters-title">🎨 Filtros Estéticos (Opcional)</div>
+                    <h4>🎨 Aplicar Filtros Estéticos</h4>
+                    <p style="margin-bottom: 15px; color: #666; font-size: 0.95em;">Elige un filtro y aplícalo a la imagen:</p>
+                    
                     <div class="filter-preview">
-                        <h4>Filtro seleccionado: <span id="selectedFilterName">Sin Filtro</span></h4>
-                        <div id="filterDescription" class="filter-description">Imagen normalizada sin efectos adicionales</div>
+                        <h5>Filtro seleccionado: <span id="selectedFilterName">Sin Filtro</span></h5>
+                        <div id="filterDescription" class="filter-description">
+                            Imagen normalizada sin efectos adicionales
+                        </div>
                     </div>
+                    
                     <div class="filters-grid">
                         <div class="filter-option selected" data-filter="none">
                             <strong>Sin Filtro</strong>
@@ -166,8 +176,10 @@
                     </div>
                 </div>
 
-                <div class="buttons">
-                    <button class="btn-primary" id="reprocessBtn">🔄 Reprocesar con Filtro</button>
+                <!-- BOTONES DE ACCIÓN SEPARADOS -->
+                <div class="buttons" style="margin-top: 30px;">
+                    <button class="btn-secondary" id="applyScaleBtn">📏 Aplicar Solo Escala</button>
+                    <button class="btn-primary" id="applyFilterBtn">🎨 Aplicar/Quitar Filtro</button>
                     <button class="btn-secondary" id="downloadBtn">💾 Descargar Imagen</button>
                 </div>
             </div>
