@@ -8,136 +8,47 @@ class ImageNormalizer {
         this.selectedFilter = "none";
         
         this.initializeEventListeners();
-        this.selectDefaultFormat();
-        this.initializeFilterListeners();
-    }
-
-    // ✅ FUNCIÓN: Seleccionar visualmente el formato por defecto
-    selectDefaultFormat() {
-        const defaultFormat = document.querySelector('[data-format="jumpsellerCuadrado"]');
-        if (defaultFormat) {
-            defaultFormat.classList.add('selected');
-        }
-    }
-
-    // ✅ FUNCIÓN: Inicializar listeners para filtros
-    initializeFilterListeners() {
-        document.querySelectorAll('.filter-option').forEach(option => {
-            option.addEventListener('click', (e) => this.selectFilter(e));
-        });
-    }
-
-    // ✅ FUNCIÓN: Seleccionar filtro
-    selectFilter(e) {
-        // Remover selección anterior
-        document.querySelectorAll('.filter-option').forEach(option => {
-            option.classList.remove('selected');
-        });
-        
-        // Agregar selección nueva
-        e.currentTarget.classList.add('selected');
-        this.selectedFilter = e.currentTarget.dataset.filter;
-        
-        // Actualizar previsualización del filtro
-        this.updateFilterPreview();
-        
-        // ✅ ACTUALIZAR TEXTO DEL BOTÓN DE FILTROS
-        this.updateFilterButtonText();
-        
-        console.log('Filtro seleccionado:', this.selectedFilter);
-    }
-
-    // ✅ FUNCIÓN: Actualizar previsualización del filtro
-    updateFilterPreview() {
-        const filterName = document.getElementById('selectedFilterName');
-        const filterDescription = document.getElementById('filterDescription');
-        
-        const filterInfo = {
-            none: { name: "Sin Filtro", description: "Imagen normalizada sin efectos adicionales" },
-            juno: { name: "Juno", description: "Tonos cálidos intensos, colores vibrantes" },
-            paris: { name: "París", description: "Tono rosado suave, efecto dreamy" },
-            lofi: { name: "Lo-Fi", description: "Saturación alta + contraste fuerte" },
-            cristal: { name: "Cristal", description: "Máxima nitidez y colores vibrantes" }
-        };
-        
-        const info = filterInfo[this.selectedFilter] || filterInfo.none;
-        filterName.textContent = info.name;
-        filterDescription.textContent = info.description;
-    }
-
-    // ✅ NUEVA FUNCIÓN: Actualizar texto del botón de filtros
-    updateFilterButtonText() {
-        const filterBtn = document.getElementById('applyFilterBtn');
-        if (this.selectedFilter === "none") {
-            filterBtn.textContent = "🔄 Quitar Filtros";
-            filterBtn.classList.remove('btn-primary');
-            filterBtn.classList.add('btn-secondary');
-        } else {
-            const filterName = this.selectedFilter.charAt(0).toUpperCase() + this.selectedFilter.slice(1);
-            filterBtn.textContent = `🎨 Aplicar ${filterName}`;
-            filterBtn.classList.remove('btn-secondary');
-            filterBtn.classList.add('btn-primary');
-        }
     }
 
     initializeEventListeners() {
-        // ✅ UPLOAD COMPACTO - Botón para seleccionar archivo
+        // Upload compacto
         document.getElementById('uploadBtn').addEventListener('click', () => {
             document.getElementById('imageInput').click();
         });
 
         // Input de archivo
-        const imageInput = document.getElementById('imageInput');
-        imageInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        document.getElementById('imageInput').addEventListener('change', (e) => this.handleFileSelect(e));
 
-        // Format selection
-        document.querySelectorAll('.format-option').forEach(option => {
-            option.addEventListener('click', (e) => this.selectFormat(e));
+        // Select de formato
+        document.getElementById('formatSelect').addEventListener('change', (e) => {
+            this.currentFormat = e.target.value;
         });
 
-        // Buttons
+        // Select de filtro
+        document.getElementById('filterSelect').addEventListener('change', (e) => {
+            this.selectedFilter = e.target.value;
+        });
+
+        // Slider de escala mini
+        document.getElementById('scaleSliderMini').addEventListener('input', (e) => {
+            this.currentScale = parseInt(e.target.value);
+            document.getElementById('scaleValueMini').textContent = `${this.currentScale}%`;
+        });
+
+        // Botones de acción
         document.getElementById('processBtn').addEventListener('click', () => this.processImage());
-        document.getElementById('processFromPreviewBtn').addEventListener('click', () => this.processImage());
-        
-        // ✅ NUEVOS BOTONES SEPARADOS
         document.getElementById('applyScaleBtn').addEventListener('click', () => this.applyScaleOnly());
         document.getElementById('applyFilterBtn').addEventListener('click', () => this.applyFilterAction());
-        
         document.getElementById('downloadBtn').addEventListener('click', () => this.downloadImage());
 
-        // Scale slider
-        document.getElementById('scaleSlider').addEventListener('input', (e) => {
-            this.currentScale = parseInt(e.target.value);
-            document.getElementById('scaleValue').textContent = `${this.currentScale}%`;
-            document.getElementById('manualScaleInput').value = this.currentScale;
-        });
-
-        // Campo de escala manual
-        document.getElementById('manualScaleInput').addEventListener('change', (e) => {
-            let value = parseInt(e.target.value);
-            // Validar rango
-            if (value < 25) value = 25;
-            if (value > 200) value = 200;
-            
-            this.currentScale = value;
-            document.getElementById('scaleSlider').value = value;
-            document.getElementById('scaleValue').textContent = `${value}%`;
-            e.target.value = value;
-        });
-
-        // ✅ DRAG & DROP para el área compacta (opcional)
-        document.addEventListener('dragover', (e) => {
-            e.preventDefault();
-        });
-
+        // Drag & drop
+        document.addEventListener('dragover', (e) => e.preventDefault());
         document.addEventListener('drop', (e) => {
             e.preventDefault();
             const files = e.dataTransfer.files;
             if (files.length > 0 && files[0].type.startsWith('image/')) {
                 this.handleImageFile(files[0]);
-                // Mostrar nombre del archivo
                 document.getElementById('fileName').textContent = files[0].name;
-                document.getElementById('fileName').classList.add('has-file');
             }
         });
     }
@@ -146,57 +57,40 @@ class ImageNormalizer {
         const files = e.target.files;
         if (files.length > 0) {
             this.handleImageFile(files[0]);
-            // ✅ Mostrar nombre del archivo
             document.getElementById('fileName').textContent = files[0].name;
-            document.getElementById('fileName').classList.add('has-file');
         }
     }
 
     async handleImageFile(file) {
-        // Validar tipo de archivo
         if (!file.type.startsWith('image/')) {
-            this.showError('Por favor, selecciona un archivo de imagen válido.');
+            this.showError('Selecciona un archivo de imagen válido.');
             return;
         }
 
-        // Validar tamaño (10MB)
         if (file.size > 10 * 1024 * 1024) {
             this.showError('La imagen es demasiado grande. Máximo 10MB.');
             return;
         }
 
         this.currentImage = file;
-        this.showLoading('🔍 Detectando producto y analizando imagen...');
+        this.showLoading('Analizando imagen...');
 
         try {
-            // Primero: detección automática para datos técnicos
             const detectionData = await this.detectProduct(file);
             this.originalTechData = detectionData;
             
-            // Mostrar preview de la imagen original
             await this.displayOriginalImagePreview(file);
+            this.displayTechSpecsCompact(detectionData.originalTech);
             
-            // Mostrar datos técnicos originales EN EL PREVIEW
-            this.displayOriginalTechSpecsPreview(detectionData.originalTech);
-            
-            // Mostrar sección de preview
-            document.getElementById('previewSection').style.display = 'block';
-            
-            // Habilitar botón de procesar
+            document.getElementById('previewCompact').style.display = 'block';
             document.getElementById('processBtn').disabled = false;
-            document.getElementById('processFromPreviewBtn').disabled = false;
             
             this.hideLoading();
-            this.showSuccess('✅ Imagen cargada y analizada correctamente. Los datos técnicos están listos.');
-
-            // Scroll al preview
-            document.getElementById('previewSection').scrollIntoView({ 
-                behavior: 'smooth' 
-            });
+            this.showSuccess('Imagen lista para procesar');
 
         } catch (error) {
             this.hideLoading();
-            this.showError('Error al analizar la imagen: ' + error.message);
+            this.showError('Error: ' + error.message);
         }
     }
 
@@ -221,170 +115,105 @@ class ImageNormalizer {
         return new Promise((resolve) => {
             const reader = new FileReader();
             reader.onload = (e) => {
-                // Actualizar imagen en el preview
-                document.getElementById('originalImagePreview').src = e.target.result;
-                // También actualizar imagen en la sección de resultados
-                document.getElementById('originalImage').src = e.target.result;
+                document.getElementById('originalImageCompact').src = e.target.result;
                 resolve();
             };
             reader.readAsDataURL(file);
         });
     }
 
-    displayOriginalTechSpecsPreview(techData) {
-        const specsContainer = document.getElementById('originalSpecsPreview');
+    displayTechSpecsCompact(techData) {
+        const specsContainer = document.getElementById('techSpecsCompact');
         specsContainer.innerHTML = `
-            <div class="spec-item">
-                <div class="spec-label">Lienzo Original</div>
-                <div class="spec-value">${techData.originalCanvas}</div>
-            </div>
-            <div class="spec-item">
-                <div class="spec-label">Producto Detectado</div>
-                <div class="spec-value">${techData.originalProduct}</div>
-            </div>
-            <!-- MÁRGENES INDIVIDUALES -->
-            <div class="spec-item">
-                <div class="spec-label">Margen Izquierdo</div>
-                <div class="spec-value">${techData.marginLeft}</div>
-            </div>
-            <div class="spec-item">
-                <div class="spec-label">Margen Derecho</div>
-                <div class="spec-value">${techData.marginRight}</div>
-            </div>
-            <div class="spec-item">
-                <div class="spec-label">Margen Superior</div>
-                <div class="spec-value">${techData.marginTop}</div>
-            </div>
-            <div class="spec-item">
-                <div class="spec-label">Margen Inferior</div>
-                <div class="spec-value">${techData.marginBottom}</div>
-            </div>
-            <div class="spec-item">
-                <div class="spec-label">Fondo Detectado</div>
-                <div class="spec-value">${techData.originalBackground}</div>
-            </div>
-            <div class="spec-item">
-                <div class="spec-label">Escala Original</div>
-                <div class="spec-value">${techData.originalScale}</div>
+            <div class="specs-list">
+                <div class="spec-item-compact">
+                    <span>Lienzo:</span>
+                    <span>${techData.originalCanvas}</span>
+                </div>
+                <div class="spec-item-compact">
+                    <span>Producto:</span>
+                    <span>${techData.originalProduct}</span>
+                </div>
+                <div class="spec-item-compact">
+                    <span>Márgenes:</span>
+                    <span>${techData.marginLeft} | ${techData.marginRight}</span>
+                </div>
+                <div class="spec-item-compact">
+                    <span>Escala:</span>
+                    <span>${techData.originalScale}</span>
+                </div>
             </div>
         `;
-
-        // También actualizar la sección de resultados con los mismos datos
-        const resultsSpecsContainer = document.getElementById('originalSpecs');
-        resultsSpecsContainer.innerHTML = specsContainer.innerHTML;
-    }
-
-    selectFormat(e) {
-        // Remover selección anterior
-        document.querySelectorAll('.format-option').forEach(option => {
-            option.classList.remove('selected');
-        });
-        
-        // Agregar selección nueva
-        e.currentTarget.classList.add('selected');
-        this.currentFormat = e.currentTarget.dataset.format;
-        
-        console.log('Formato seleccionado:', this.currentFormat);
     }
 
     async processImage() {
         if (!this.currentImage) {
-            this.showError('Por favor, selecciona una imagen primero.');
+            this.showError('Selecciona una imagen primero.');
             return;
         }
 
-        if (!this.currentFormat) {
-            this.showError('Por favor, selecciona un formato de salida.');
-            return;
-        }
-
-        this.showLoading('🔄 Normalizando imagen...');
+        this.showLoading('Normalizando...');
 
         try {
-            // ✅ Proceso inicial - normalización básica
             const result = await this.sendProcessRequest(this.currentScale, "none", true);
             this.displayProcessedResult(result);
             this.hideLoading();
-            this.showSuccess('🎉 Imagen normalizada correctamente!');
+            this.showSuccess('Imagen normalizada!');
 
         } catch (error) {
             this.hideLoading();
-            this.showError('Error al procesar la imagen: ' + error.message);
+            this.showError('Error: ' + error.message);
         }
     }
 
-    // ✅ NUEVA FUNCIÓN: Aplicar solo escala (RESPETANDO el filtro actual)
     async applyScaleOnly() {
-        console.log('🔍 DEBUG: Aplicando solo escala');
-        console.log('🔍 DEBUG: Nueva escala =', this.currentScale);
-        console.log('🔍 DEBUG: Filtro actual =', this.selectedFilter);
-        
-        if (!this.currentImage || !this.currentFormat) {
-            this.showError('No hay imagen para reprocesar.');
+        if (!this.currentImage) {
+            this.showError('No hay imagen para procesar.');
             return;
         }
 
-        this.showLoading('📏 Ajustando escala...');
+        this.showLoading('Ajustando escala...');
 
         try {
-            // ✅ MANTIENE el filtro actual, solo cambia escala
-            // isInitialProcess = false para mantener filtros si los hay
             const result = await this.sendProcessRequest(this.currentScale, this.selectedFilter, false);
             this.displayProcessedResult(result);
             this.hideLoading();
-            this.showSuccess('✅ Escala ajustada correctamente!');
+            this.showSuccess('Escala ajustada!');
 
         } catch (error) {
             this.hideLoading();
-            this.showError('Error al ajustar escala: ' + error.message);
+            this.showError('Error: ' + error.message);
         }
     }
 
-    // ✅ NUEVA FUNCIÓN: Aplicar/Quitar filtro (RESPETANDO la escala actual)
     async applyFilterAction() {
-        console.log('🔍 DEBUG: Aplicando/Quitando filtro');
-        console.log('🔍 DEBUG: Filtro seleccionado =', this.selectedFilter);
-        console.log('🔍 DEBUG: Escala actual =', this.currentScale);
-        
-        if (!this.currentImage || !this.currentFormat) {
-            this.showError('No hay imagen para reprocesar.');
+        if (!this.currentImage) {
+            this.showError('No hay imagen para procesar.');
             return;
         }
 
-        const loadingMessage = this.selectedFilter === "none" 
-            ? '🔄 Quitando filtros...' 
-            : `🎨 Aplicando filtro ${this.selectedFilter}...`;
-        
-        this.showLoading(loadingMessage);
+        this.showLoading('Aplicando filtro...');
 
         try {
-            // ✅ SI es "none", usa proceso inicial (true) para QUITAR filtros
-            // ✅ SI es otro filtro, usa proceso normal (false) para APLICAR filtros
             const isInitialProcess = this.selectedFilter === "none";
             const result = await this.sendProcessRequest(this.currentScale, this.selectedFilter, isInitialProcess);
             
             this.displayProcessedResult(result);
             this.hideLoading();
             
-            const successMessage = this.selectedFilter === "none" 
-                ? '✅ Filtros quitados correctamente!' 
-                : `✅ Filtro ${this.selectedFilter} aplicado correctamente!`;
+            const message = this.selectedFilter === "none" 
+                ? 'Filtros quitados!' 
+                : 'Filtro aplicado!';
             
-            this.showSuccess(successMessage);
+            this.showSuccess(message);
 
         } catch (error) {
             this.hideLoading();
-            this.showError('Error al aplicar filtro: ' + error.message);
+            this.showError('Error: ' + error.message);
         }
     }
 
-    // ✅ FUNCIÓN: Enviar solicitud de procesamiento
-    async sendProcessRequest(scale, filter = "none", isInitialProcess = false) {
-        console.log('🔍 DEBUG: Enviando solicitud con:');
-        console.log('  - Escala:', scale);
-        console.log('  - Filtro:', filter);
-        console.log('  - Proceso inicial:', isInitialProcess);
-        
+    async sendProcessRequest(scale, filter, isInitialProcess) {
         const formData = new FormData();
         formData.append('imagen', this.currentImage);
         formData.append('imageFormat', this.currentFormat);
@@ -406,90 +235,33 @@ class ImageNormalizer {
     }
 
     displayProcessedResult(result) {
-        // Ocultar preview y mostrar resultados
-        document.getElementById('previewSection').style.display = 'none';
-        document.getElementById('resultsSection').style.display = 'block';
-        
-        // Mostrar imagen procesada
-        document.getElementById('processedImage').src = result.procesada;
+        document.getElementById('processedImageCompact').src = result.procesada;
         this.currentProcessedImage = result.procesada;
         
-        // Mostrar datos técnicos procesados
-        this.displayProcessedTechSpecs(result.processedTech);
-        
-        // Mostrar sección de ajuste fino
-        document.getElementById('adjustmentSection').style.display = 'block';
-        
-        // Actualizar detalles del método en la interfaz
-        this.updateProcessMethodInfo(result.detalles);
-        
-        // Scroll a resultados
-        document.getElementById('resultsSection').scrollIntoView({ 
-            behavior: 'smooth' 
-        });
+        // Actualizar specs si es necesario
+        this.displayProcessedTechSpecsCompact(result.processedTech);
     }
 
-    // ✅ FUNCIÓN: Actualizar información del método de procesamiento
-    updateProcessMethodInfo(detalles) {
-        const filterPreview = document.querySelector('.filter-preview');
-        if (filterPreview) {
-            const methodInfo = document.createElement('div');
-            methodInfo.className = 'method-info';
-            methodInfo.style.marginTop = '10px';
-            methodInfo.style.padding = '8px';
-            methodInfo.style.background = '#f0f8ff';
-            methodInfo.style.borderRadius = '4px';
-            methodInfo.style.fontSize = '0.8em';
-            methodInfo.innerHTML = `<strong>Método:</strong> ${detalles.metodo}`;
-            
-            // Limpiar info anterior y agregar nueva
-            const existingInfo = filterPreview.querySelector('.method-info');
-            if (existingInfo) {
-                existingInfo.remove();
-            }
-            filterPreview.appendChild(methodInfo);
-        }
-    }
-
-    displayProcessedTechSpecs(techData) {
-        const specsContainer = document.getElementById('processedSpecs');
+    displayProcessedTechSpecsCompact(techData) {
+        const specsContainer = document.getElementById('techSpecsCompact');
         specsContainer.innerHTML = `
-            <div class="spec-item">
-                <div class="spec-label">Lienzo Procesado</div>
-                <div class="spec-value">${techData.processedCanvas}</div>
-            </div>
-            <div class="spec-item">
-                <div class="spec-label">Producto Procesado</div>
-                <div class="spec-value">${techData.processedProduct}</div>
-            </div>
-            <!-- MÁRGENES INDIVIDUALES DEL RESULTADO -->
-            <div class="spec-item">
-                <div class="spec-label">Margen Izquierdo</div>
-                <div class="spec-value">${techData.marginLeft}</div>
-            </div>
-            <div class="spec-item">
-                <div class="spec-label">Margen Derecho</div>
-                <div class="spec-value">${techData.marginRight}</div>
-            </div>
-            <div class="spec-item">
-                <div class="spec-label">Margen Superior</div>
-                <div class="spec-value">${techData.marginTop}</div>
-            </div>
-            <div class="spec-item">
-                <div class="spec-label">Margen Inferior</div>
-                <div class="spec-value">${techData.marginBottom}</div>
-            </div>
-            <div class="spec-item">
-                <div class="spec-label">Fondo Final</div>
-                <div class="spec-value">${techData.processedBackground}</div>
-            </div>
-            <div class="spec-item">
-                <div class="spec-label">Escala Aplicada</div>
-                <div class="spec-value">${techData.processedScale}</div>
-            </div>
-            <div class="spec-item">
-                <div class="spec-label">Escala Usuario</div>
-                <div class="spec-value">${techData.userScale}</div>
+            <div class="specs-list">
+                <div class="spec-item-compact">
+                    <span>Lienzo:</span>
+                    <span>${techData.processedCanvas}</span>
+                </div>
+                <div class="spec-item-compact">
+                    <span>Producto:</span>
+                    <span>${techData.processedProduct}</span>
+                </div>
+                <div class="spec-item-compact">
+                    <span>Márgenes:</span>
+                    <span>${techData.marginLeft} | ${techData.marginRight}</span>
+                </div>
+                <div class="spec-item-compact">
+                    <span>Escala:</span>
+                    <span>${techData.processedScale}</span>
+                </div>
             </div>
         `;
     }
@@ -502,61 +274,54 @@ class ImageNormalizer {
 
         const link = document.createElement('a');
         link.href = this.currentProcessedImage;
-        link.download = `imagen-normalizada-${Date.now()}.png`;
+        link.download = `normalizada-${Date.now()}.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     }
 
-    showLoading(message = 'Procesando...') {
-        const loading = document.getElementById('loading');
-        loading.style.display = 'block';
-        loading.querySelector('p').textContent = message;
+    showLoading(message) {
+        const loading = document.getElementById('loadingCompact');
+        loading.querySelector('span').textContent = message;
+        loading.style.display = 'flex';
         
-        document.getElementById('processBtn').disabled = true;
-        document.getElementById('processFromPreviewBtn').disabled = true;
-        document.getElementById('applyScaleBtn').disabled = true;
-        document.getElementById('applyFilterBtn').disabled = true;
-        document.getElementById('uploadBtn').disabled = true;
+        // Deshabilitar botones
+        document.querySelectorAll('button').forEach(btn => {
+            if (btn.id !== 'uploadBtn') btn.disabled = true;
+        });
     }
 
     hideLoading() {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('processBtn').disabled = false;
-        document.getElementById('processFromPreviewBtn').disabled = false;
-        document.getElementById('applyScaleBtn').disabled = false;
-        document.getElementById('applyFilterBtn').disabled = false;
-        document.getElementById('uploadBtn').disabled = false;
+        document.getElementById('loadingCompact').style.display = 'none';
+        document.querySelectorAll('button').forEach(btn => {
+            btn.disabled = false;
+        });
     }
 
     showError(message) {
-        const errorDiv = document.getElementById('errorMessage');
+        const errorDiv = document.getElementById('errorMessageCompact');
         errorDiv.textContent = message;
-        errorDiv.style.display = 'block';
+        errorDiv.style.display = 'flex';
+        document.getElementById('successMessageCompact').style.display = 'none';
         
-        document.getElementById('successMessage').style.display = 'none';
-        
-        // Auto-ocultar después de 5 segundos
         setTimeout(() => {
             errorDiv.style.display = 'none';
-        }, 5000);
+        }, 4000);
     }
 
     showSuccess(message) {
-        const successDiv = document.getElementById('successMessage');
+        const successDiv = document.getElementById('successMessageCompact');
         successDiv.textContent = message;
-        successDiv.style.display = 'block';
+        successDiv.style.display = 'flex';
+        document.getElementById('errorMessageCompact').style.display = 'none';
         
-        document.getElementById('errorMessage').style.display = 'none';
-        
-        // Auto-ocultar después de 3 segundos
         setTimeout(() => {
             successDiv.style.display = 'none';
         }, 3000);
     }
 }
 
-// Inicializar la aplicación cuando el DOM esté listo
+// Inicializar la aplicación
 document.addEventListener('DOMContentLoaded', () => {
     new ImageNormalizer();
 });
