@@ -23,7 +23,7 @@ app.get("/", (req, res) => {
   res.sendFile(path.resolve("public/index.html"));
 });
 
-// ✅ FUNCIÓN: Detectar color de fondo analizando bordes
+// ✅ FUNCIÓN: Detectar color de fondo analizando bordes (CORREGIDA)
 function detectBackgroundColor(imageData, width, height) {
   const sampleSize = 50;
   const samples = [];
@@ -60,7 +60,7 @@ function detectBackgroundColor(imageData, width, height) {
     samples.push({
       r: imageData[rightIndex],
       g: imageData[rightIndex + 1],
-      b: data[rightIndex + 2]
+      b: imageData[rightIndex + 2]  // ← CORREGIDO: era 'data' en lugar de 'imageData'
     });
   }
   
