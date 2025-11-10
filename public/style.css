@@ -1,4 +1,4 @@
-/* styles.css - ARCHIVO COMPLETO UNIFICADO */
+/* CSS ULTRA COMPACTO */
 * {
     margin: 0;
     padding: 0;
@@ -7,375 +7,236 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    line-height: 1.6;
-    color: #333;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
-    padding: 20px;
+    padding: 10px;
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     background: white;
-    border-radius: 15px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     overflow: hidden;
 }
 
-header {
+/* HEADER COMPACTO */
+.compact-header {
     background: linear-gradient(135deg, #2c3e50, #34495e);
     color: white;
-    padding: 30px;
+    padding: 15px 20px;
     text-align: center;
 }
 
-h1 {
-    font-size: 2.5em;
-    margin-bottom: 10px;
-    font-weight: 300;
+.compact-header h1 {
+    font-size: 1.5em;
+    margin-bottom: 2px;
+    font-weight: 600;
 }
 
 .subtitle {
-    font-size: 1.1em;
-    opacity: 0.9;
-    font-weight: 300;
+    font-size: 0.85em;
+    opacity: 0.8;
 }
 
-/* SECCIÓN DE SUBIDA COMPACTA */
-.upload-section {
-    padding: 40px;
-    border-bottom: 1px solid #eee;
-}
-
-.compact-upload {
-    text-align: center;
-    padding: 25px;
+/* PANEL DE CONTROL COMPACTO */
+.control-panel {
+    padding: 15px 20px;
     background: #f8f9ff;
-    border-radius: 12px;
-    border: 2px dashed #e2e8f0;
-    margin-bottom: 25px;
+    border-bottom: 1px solid #e2e8f0;
 }
 
-.compact-upload h3 {
-    margin-bottom: 8px;
-    color: #2d3748;
-}
-
-.upload-info {
-    margin-bottom: 20px;
-    color: #718096;
-    font-size: 0.9em;
-}
-
-.compact-upload-area {
+.quick-controls {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 15px;
+    gap: 10px;
+    margin-bottom: 10px;
     flex-wrap: wrap;
+}
+
+.upload-mini {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 #imageInput {
     display: none;
 }
 
-#uploadBtn {
-    padding: 10px 20px;
-    font-size: 0.95em;
-    min-width: 140px;
-}
-
-#fileName {
-    color: #718096;
-    font-size: 0.9em;
-    font-style: italic;
-    min-height: 20px;
-    display: inline-block;
-}
-
-#fileName.has-file {
-    color: #48bb78;
+.btn-mini, .btn-primary-mini, .btn-secondary-mini {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 5px;
+    font-size: 0.8em;
     font-weight: 600;
-    font-style: normal;
-}
-
-/* SELECTOR DE FORMATO */
-.format-selector {
-    margin-top: 30px;
-}
-
-.format-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-    margin-top: 15px;
-}
-
-.format-option {
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 15px;
-    text-align: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
-.format-option:hover {
-    border-color: #667eea;
-    background: #f8f9ff;
+.btn-mini {
+    background: #e2e8f0;
+    color: #4a5568;
 }
 
-.format-option.selected {
-    border-color: #667eea;
+.btn-primary-mini {
     background: #667eea;
     color: white;
 }
 
-/* SECCIÓN DE PREVIEW INMEDIATO */
-.preview-section {
-    padding: 40px;
-    border-bottom: 1px solid #eee;
-    display: none;
-}
-
-.preview-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-    margin-bottom: 30px;
-}
-
-.image-container {
-    background: #f8f9fa;
-    border-radius: 10px;
-    padding: 20px;
-    text-align: center;
-}
-
-.image-container img {
-    max-width: 100%;
-    max-height: 400px;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-}
-
-.tech-specs {
-    background: #f8f9fa;
-    border-radius: 10px;
-    padding: 20px;
-}
-
-/* ✅ DATOS TÉCNICOS COMPACTOS - UNA SOLA COLUMNA */
-.specs-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.spec-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
-    background: white;
-    border-radius: 6px;
-    border-left: 3px solid #667eea;
-    margin-bottom: 0;
-}
-
-.spec-item:nth-child(even) {
-    background: #f8f9fa;
-}
-
-.spec-label {
-    font-weight: 600;
+.btn-secondary-mini {
+    background: #edf2f7;
     color: #4a5568;
-    font-size: 0.85em;
-    margin-bottom: 0;
-    flex: 1;
-}
-
-.spec-value {
-    color: #2d3748;
-    font-size: 0.85em;
-    font-weight: 500;
-    text-align: right;
-    flex: 1;
-}
-
-/* SECCIÓN DE RESULTADOS */
-.results-section {
-    padding: 40px;
-    display: none;
-}
-
-.results-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-    margin-bottom: 30px;
-}
-
-/* SECCIÓN DE AJUSTES */
-.adjustment-section {
-    background: #f0fff4;
-    border: 2px solid #c6f6d5;
-    border-radius: 10px;
-    padding: 25px;
-    margin-top: 30px;
-    display: none;
-}
-
-.scale-section {
-    margin-bottom: 25px;
-    padding: 20px;
-    background: #f8f9fa;
-    border-radius: 10px;
     border: 1px solid #e2e8f0;
 }
 
-.section-description {
-    margin-bottom: 15px;
-    color: #666;
-    font-size: 0.95em;
+.btn-mini:hover, .btn-secondary-mini:hover {
+    background: #cbd5e0;
 }
 
-.scale-control {
-    margin: 20px 0;
+.btn-primary-mini:hover {
+    background: #5a67d8;
 }
 
-.scale-value {
-    text-align: center;
-    font-size: 1.2em;
-    font-weight: 600;
-    color: #2d3748;
-    margin-bottom: 10px;
-}
-
-.scale-slider {
-    width: 100%;
-    height: 8px;
-    border-radius: 4px;
-    background: #e2e8f0;
-    outline: none;
-    -webkit-appearance: none;
-}
-
-.scale-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #667eea;
-    cursor: pointer;
-    border: 2px solid white;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-}
-
-.scale-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #667eea;
-    cursor: pointer;
-    border: 2px solid white;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-}
-
-.scale-labels {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 5px;
+#fileName {
+    font-size: 0.75em;
     color: #718096;
-    font-size: 0.9em;
+    font-style: italic;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.manual-scale {
-    margin-top: 15px;
-    text-align: center;
+.format-select, .filter-select {
+    padding: 6px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    font-size: 0.8em;
+    background: white;
+    min-width: 150px;
 }
 
-.manual-scale label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: #4a5568;
-}
-
-.manual-scale input {
-    padding: 8px 12px;
-    border: 2px solid #e2e8f0;
-    border-radius: 6px;
-    width: 100px;
-    text-align: center;
-    font-size: 1em;
-    margin-right: 5px;
-}
-
-/* BOTONES */
-.buttons {
+/* CONTROLES DE ACCIÓN */
+.action-controls {
     display: flex;
-    gap: 15px;
-    justify-content: center;
-    margin-top: 30px;
+    align-items: center;
+    gap: 8px;
     flex-wrap: wrap;
 }
 
-button {
-    padding: 12px 30px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1em;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    min-width: 140px;
-}
-
-.btn-primary {
-    background: #667eea;
-    color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-    background: #5a67d8;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.btn-secondary {
-    background: #e2e8f0;
+.scale-mini {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8em;
     color: #4a5568;
 }
 
-.btn-secondary:hover {
-    background: #cbd5e0;
-    transform: translateY(-2px);
+.mini-slider {
+    width: 80px;
+    height: 4px;
 }
 
-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none !important;
-    box-shadow: none !important;
+#scaleValueMini {
+    font-weight: 600;
+    min-width: 30px;
 }
 
-/* LOADING */
-.loading {
+/* VISTA PREVIA COMPACTA */
+.preview-compact {
+    padding: 15px 20px;
     display: none;
-    text-align: center;
-    padding: 40px;
 }
 
-.spinner {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #667eea;
+.image-comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.image-box {
+    text-align: center;
+}
+
+.image-box h4 {
+    font-size: 0.9em;
+    margin-bottom: 8px;
+    color: #4a5568;
+}
+
+.image-box img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 5px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid #e2e8f0;
+}
+
+/* DATOS TÉCNICOS SUPER COMPACTOS */
+.tech-specs-compact {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 0.75em;
+}
+
+.specs-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 4px;
+}
+
+.spec-item-compact {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 6px;
+    background: white;
+    border-radius: 3px;
+}
+
+.spec-item-compact:nth-child(even) {
+    background: #f8f9fa;
+}
+
+/* MENSAJES COMPACTOS */
+.loading-compact, .message-compact {
+    display: none;
+    padding: 8px 15px;
+    margin: 0 20px 10px;
+    border-radius: 5px;
+    font-size: 0.8em;
+    align-items: center;
+    gap: 8px;
+}
+
+.loading-compact {
+    background: #ebf8ff;
+    color: #3182ce;
+}
+
+.message-compact.error {
+    background: #fed7d7;
+    color: #c53030;
+    border: 1px solid #feb2b2;
+}
+
+.message-compact.success {
+    background: #c6f6d5;
+    color: #2d7a3b;
+    border: 1px solid #9ae6b4;
+}
+
+.spinner-mini {
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #667eea;
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
+    width: 16px;
+    height: 16px;
     animation: spin 1s linear infinite;
-    margin: 0 auto 15px;
 }
 
 @keyframes spin {
@@ -383,251 +244,31 @@ button:disabled {
     100% { transform: rotate(360deg); }
 }
 
-/* MENSAJES */
-.error {
-    background: #fed7d7;
-    border: 1px solid #feb2b2;
-    color: #c53030;
-    padding: 15px;
-    border-radius: 8px;
-    margin: 20px 0;
-    display: none;
-}
-
-.success {
-    background: #c6f6d5;
-    border: 1px solid #9ae6b4;
-    color: #2d7a3b;
-    padding: 15px;
-    border-radius: 8px;
-    margin: 20px 0;
-    display: none;
-}
-
-/* SECCIÓN DE FILTROS ESTÉTICOS */
-.filters-section {
-    margin: 25px 0;
-    padding: 20px;
-    background: #f8f9ff;
-    border-radius: 10px;
-    border: 2px solid #e2e8f0;
-}
-
-.filters-title {
-    text-align: center;
-    margin-bottom: 15px;
-    font-size: 1.2em;
-    font-weight: 600;
-    color: #4a5568;
-}
-
-.filters-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.filter-option {
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 12px 8px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    background: white;
-    font-size: 0.9em;
-}
-
-.filter-option:hover {
-    border-color: #667eea;
-    background: #f0f4ff;
-    transform: translateY(-2px);
-}
-
-.filter-option.selected {
-    border-color: #667eea;
-    background: #667eea;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.filter-preview {
-    text-align: center;
-    margin-top: 15px;
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    border: 1px dashed #cbd5e0;
-}
-
-.filter-preview h4 {
-    margin-bottom: 8px;
-    color: #4a5568;
-    font-size: 1.1em;
-}
-
-.filter-description {
-    font-size: 0.85em;
-    color: #718096;
-    font-style: italic;
-    line-height: 1.4;
-}
-
-/* MEJORAS VISUALES ADICIONALES */
-.format-option strong {
-    display: block;
-    margin-bottom: 5px;
-}
-
-.format-option div {
-    font-size: 0.9em;
-    opacity: 0.8;
-}
-
-.filter-option strong {
-    display: block;
-    font-size: 0.95em;
-}
-
-/* ESTADOS DE INTERACCIÓN */
-.upload-area:active {
-    transform: scale(0.98);
-}
-
-button:active {
-    transform: translateY(0) !important;
-}
-
-/* SCROLL SMOOTH */
-html {
-    scroll-behavior: smooth;
-}
-
 /* RESPONSIVE */
 @media (max-width: 768px) {
-    .preview-grid,
-    .results-grid {
+    .container {
+        margin: 5px;
+    }
+    
+    .quick-controls, .action-controls {
+        justify-content: center;
+    }
+    
+    .image-comparison {
         grid-template-columns: 1fr;
-        gap: 20px;
-    }
-    
-    /* ✅ DATOS TÉCNICOS MÁS COMPACTOS EN MÓVIL */
-    .specs-grid {
-        gap: 6px;
-    }
-    
-    .spec-item {
-        padding: 6px 10px;
-    }
-    
-    .spec-label,
-    .spec-value {
-        font-size: 0.8em;
-    }
-    
-    .format-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .filters-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .buttons {
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    button {
-        width: 100%;
-        max-width: 280px;
-    }
-    
-    h1 {
-        font-size: 2em;
-    }
-    
-    .upload-section,
-    .preview-section,
-    .results-section {
-        padding: 20px;
-    }
-    
-    .compact-upload {
-        padding: 20px 15px;
-    }
-    
-    .image-container img {
-        max-height: 300px;
-    }
-    
-    .compact-upload-area {
-        flex-direction: column;
         gap: 10px;
     }
     
-    #fileName {
-        margin-left: 0;
-    }
-}
-
-@media (max-width: 480px) {
-    body {
-        padding: 10px;
+    .image-box img {
+        max-height: 200px;
     }
     
-    .container {
-        border-radius: 10px;
-    }
-    
-    header {
-        padding: 20px;
-    }
-    
-    h1 {
-        font-size: 1.8em;
-    }
-    
-    .filters-grid {
+    .specs-list {
         grid-template-columns: 1fr;
     }
-    
-    .scale-labels {
-        flex-direction: column;
-        gap: 5px;
-        text-align: center;
-    }
-    
-    .manual-scale input {
-        width: 80px;
-    }
-    
-    /* ✅ DATOS TÉCNICOS EXTRA COMPACTOS EN MÓVIL PEQUEÑO */
-    .specs-grid {
-        gap: 4px;
-    }
-    
-    .spec-item {
-        padding: 5px 8px;
-    }
-    
-    .spec-label,
-    .spec-value {
-        font-size: 0.75em;
-    }
 }
 
-/* MEJORAS DE ACCESIBILIDAD */
-button:focus,
-.format-option:focus,
-.filter-option:focus {
-    outline: 2px solid #667eea;
-    outline-offset: 2px;
-}
-
-input:focus {
-    outline: 2px solid #667eea;
-    border-color: #667eea;
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
