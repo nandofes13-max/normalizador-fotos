@@ -5,11 +5,11 @@ class ImageNormalizer {
         this.originalTechData = null;
         this.currentProcessedImage = null;
         this.currentScale = 80;
-        this.selectedFilter = "none"; // ← NUEVO: Filtro seleccionado
+        this.selectedFilter = "none";
         
         this.initializeEventListeners();
         this.selectDefaultFormat();
-        this.initializeFilterListeners(); // ← NUEVO: Inicializar listeners de filtros
+        this.initializeFilterListeners();
     }
 
     // ✅ FUNCIÓN: Seleccionar visualmente el formato por defecto
@@ -20,14 +20,14 @@ class ImageNormalizer {
         }
     }
 
-    // ✅ NUEVA FUNCIÓN: Inicializar listeners para filtros
+    // ✅ FUNCIÓN: Inicializar listeners para filtros
     initializeFilterListeners() {
         document.querySelectorAll('.filter-option').forEach(option => {
             option.addEventListener('click', (e) => this.selectFilter(e));
         });
     }
 
-    // ✅ NUEVA FUNCIÓN: Seleccionar filtro
+    // ✅ FUNCIÓN: Seleccionar filtro
     selectFilter(e) {
         // Remover selección anterior
         document.querySelectorAll('.filter-option').forEach(option => {
@@ -44,7 +44,7 @@ class ImageNormalizer {
         console.log('Filtro seleccionado:', this.selectedFilter);
     }
 
-    // ✅ NUEVA FUNCIÓN: Actualizar previsualización del filtro
+    // ✅ FUNCIÓN: Actualizar previsualización del filtro
     updateFilterPreview() {
         const filterName = document.getElementById('selectedFilterName');
         const filterDescription = document.getElementById('filterDescription');
@@ -275,8 +275,8 @@ class ImageNormalizer {
         this.showLoading('🔄 Normalizando imagen...');
 
         try {
-            // ✅ MODIFICADO: Enviar sin filtros para normalización básica
-            const result = await this.sendProcessRequest(this.currentScale, "none");
+            // ✅ MODIFICADO: Enviar como proceso inicial (true)
+            const result = await this.sendProcessRequest(this.currentScale, "none", true);
             this.displayProcessedResult(result);
             this.hideLoading();
             this.showSuccess('🎉 Imagen normalizada correctamente!');
@@ -294,12 +294,6 @@ class ImageNormalizer {
         console.log('🔍 DEBUG: selectedFilter =', this.selectedFilter);
         console.log('🔍 DEBUG: currentImage =', this.currentImage ? 'SÍ' : 'NO');
         
-        // Verificar valores de los controles UI para debugging
-        const sliderValue = document.getElementById('scaleSlider').value;
-        const manualInputValue = document.getElementById('manualScaleInput').value;
-        console.log('🔍 DEBUG: Slider value =', sliderValue);
-        console.log('🔍 DEBUG: Manual input value =', manualInputValue);
-        
         if (!this.currentImage || !this.currentFormat) {
             this.showError('No hay imagen para reprocesar.');
             return;
@@ -308,8 +302,8 @@ class ImageNormalizer {
         this.showLoading('🔄 Aplicando filtro...');
 
         try {
-            // ✅ MODIFICADO: Enviar filtro seleccionado
-            const result = await this.sendProcessRequest(this.currentScale, this.selectedFilter);
+            // ✅ MODIFICADO: Enviar como NO proceso inicial (false)
+            const result = await this.sendProcessRequest(this.currentScale, this.selectedFilter, false);
             this.displayProcessedResult(result);
             this.hideLoading();
             this.showSuccess('✅ Filtro aplicado correctamente!');
@@ -320,15 +314,19 @@ class ImageNormalizer {
         }
     }
 
-    // ✅ MODIFICADA: Ahora acepta parámetro de filtro
-    async sendProcessRequest(scale, filter = "none") {
-        console.log('🔍 DEBUG: Enviando solicitud con escala =', scale, 'y filtro =', filter);
+    // ✅ MODIFICADA: Ahora acepta parámetro isInitialProcess
+    async sendProcessRequest(scale, filter = "none", isInitialProcess = false) {
+        console.log('🔍 DEBUG: Enviando solicitud con:');
+        console.log('  - Escala:', scale);
+        console.log('  - Filtro:', filter);
+        console.log('  - Proceso inicial:', isInitialProcess);
         
         const formData = new FormData();
         formData.append('imagen', this.currentImage);
         formData.append('imageFormat', this.currentFormat);
         formData.append('userScale', scale.toString());
-        formData.append('filter', filter); // ← NUEVO: Enviar filtro al servidor
+        formData.append('filter', filter);
+        formData.append('isInitialProcess', isInitialProcess.toString()); // ← NUEVO PARÁMETRO
 
         const response = await fetch('/procesar', {
             method: 'POST',
@@ -358,10 +356,35 @@ class ImageNormalizer {
         // Mostrar sección de ajuste fino
         document.getElementById('adjustmentSection').style.display = 'block';
         
+        // Actualizar detalles del método en la interfaz
+        this.updateProcessMethodInfo(result.detalles);
+        
         // Scroll a resultados
         document.getElementById('resultsSection').scrollIntoView({ 
             behavior: 'smooth' 
         });
+    }
+
+    // ✅ NUEVA FUNCIÓN: Actualizar información del método de procesamiento
+    updateProcessMethodInfo(detalles) {
+        const filterPreview = document.querySelector('.filter-preview');
+        if (filterPreview) {
+            const methodInfo = document.createElement('div');
+            methodInfo.className = 'method-info';
+            methodInfo.style.marginTop = '10px';
+            methodInfo.style.padding = '8px';
+            methodInfo.style.background = '#f0f8ff';
+            methodInfo.style.borderRadius = '4px';
+            methodInfo.style.fontSize = '0.8em';
+            methodInfo.innerHTML = `<strong>Método:</strong> ${detalles.metodo}`;
+            
+            // Limpiar info anterior y agregar nueva
+            const existingInfo = filterPreview.querySelector('.method-info');
+            if (existingInfo) {
+                existingInfo.remove();
+            }
+            filterPreview.appendChild(methodInfo);
+        }
     }
 
     displayProcessedTechSpecs(techData) {
