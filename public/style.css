@@ -163,21 +163,25 @@ h1 {
 .tech-specs {
     background: #f8f9fa;
     border-radius: 10px;
-    padding: 25px;
+    padding: 20px;
 }
 
+/* ✅ DATOS TÉCNICOS COMPACTOS - UNA SOLA COLUMNA */
 .specs-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .spec-item {
-    margin-bottom: 15px;
-    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
     background: white;
     border-radius: 6px;
-    border-left: 4px solid #667eea;
+    border-left: 3px solid #667eea;
+    margin-bottom: 0;
 }
 
 .spec-item:nth-child(even) {
@@ -187,14 +191,17 @@ h1 {
 .spec-label {
     font-weight: 600;
     color: #4a5568;
-    margin-bottom: 5px;
-    font-size: 0.9em;
+    font-size: 0.85em;
+    margin-bottom: 0;
+    flex: 1;
 }
 
 .spec-value {
     color: #2d3748;
-    font-size: 1em;
+    font-size: 0.85em;
     font-weight: 500;
+    text-align: right;
+    flex: 1;
 }
 
 /* SECCIÓN DE RESULTADOS */
@@ -506,9 +513,18 @@ html {
         gap: 20px;
     }
     
+    /* ✅ DATOS TÉCNICOS MÁS COMPACTOS EN MÓVIL */
     .specs-grid {
-        grid-template-columns: 1fr;
-        gap: 15px;
+        gap: 6px;
+    }
+    
+    .spec-item {
+        padding: 6px 10px;
+    }
+    
+    .spec-label,
+    .spec-value {
+        font-size: 0.8em;
     }
     
     .format-grid {
@@ -586,6 +602,20 @@ html {
     
     .manual-scale input {
         width: 80px;
+    }
+    
+    /* ✅ DATOS TÉCNICOS EXTRA COMPACTOS EN MÓVIL PEQUEÑO */
+    .specs-grid {
+        gap: 4px;
+    }
+    
+    .spec-item {
+        padding: 5px 8px;
+    }
+    
+    .spec-label,
+    .spec-value {
+        font-size: 0.75em;
     }
 }
 
