@@ -228,10 +228,14 @@ app.post("/detectar", upload.single("imagen"), async (req, res) => {
   }
 });
 
-// ✅ ENDPOINT MEJORADO: Procesar imagen con filtros optimizados para 380px
+// ✅ ENDPOINT MEJORADO: Procesar imagen con filtros configurables
 app.post("/procesar", upload.single("imagen"), async (req, res) => {
   const imagen = req.file;
-  const { imageFormat, userScale = 80 } = req.body;
+  const { 
+    imageFormat, 
+    userScale = 80,
+    filter = "none"  // ← NUEVO: Recibir el filtro desde el frontend
+  } = req.body;
 
   if (!imagen) {
     return res.status(400).json({ error: "No se recibió ninguna imagen" });
@@ -243,6 +247,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
   console.log("🛍️ Procesando imagen:", imagen.originalname);
   console.log("🎚️ Escala usuario:", `${userScale}%`);
+  console.log("🎨 Filtro seleccionado:", filter);
 
   try {
     // ✅ VERIFICAR que el archivo existe antes de procesar
@@ -266,39 +271,90 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
 
     console.log("✅ Producto detectado:", productBounds);
 
-    // Recortar producto con FILTROS OPTIMIZADOS PARA 380px
-    console.log("🎨 Aplicando filtros optimizados para 380px...");
+    // PASO 2: APLICAR FILTROS ESTÉTICOS SEGÚN SELECCIÓN
+    console.log("🎨 Aplicando filtro:", filter);
     
-    const croppedBuffer = await sharp(imagen.path)
+    // Configuración de filtros
+    const filterConfigs = {
+      none: {
+        brightness: 1.15,
+        saturation: 1.25,
+        contrast: 1.20,
+        gamma: 1.08,
+        sharpen: { sigma: 1.2, m1: 1.5, m2: 0.4, x1: 2, y2: 10, y3: 20 },
+        median: 3,
+        description: "Imagen normalizada sin efectos adicionales"
+      },
+      juno: {
+        brightness: 1.25,
+        saturation: 1.35,
+        contrast: 1.15,
+        gamma: 1.1,
+        sharpen: { sigma: 1.0, m1: 1.2, m2: 0.3, x1: 1.5, y2: 8, y3: 15 },
+        median: 2,
+        tint: { r: 255, g: 240, b: 220 }, // Tono cálido
+        description: "Tonos cálidos intensos, colores vibrantes"
+      },
+      paris: {
+        brightness: 1.18,
+        saturation: 1.15,
+        contrast: 1.10,
+        gamma: 1.05,
+        sharpen: { sigma: 0.8, m1: 1.0, m2: 0.2, x1: 1, y2: 5, y3: 10 },
+        median: 4,
+        tint: { r: 255, g: 230, b: 250 }, // Tono rosado suave
+        description: "Tono rosado suave, efecto dreamy"
+      },
+      lofi: {
+        brightness: 1.10,
+        saturation: 1.40,
+        contrast: 1.30,
+        gamma: 1.15,
+        sharpen: { sigma: 1.5, m1: 2.0, m2: 0.5, x1: 3, y2: 15, y3: 25 },
+        median: 1,
+        description: "Saturación alta + contraste fuerte"
+      },
+      cristal: {
+        brightness: 1.12,
+        saturation: 1.30,
+        contrast: 1.25,
+        gamma: 1.12,
+        sharpen: { sigma: 1.8, m1: 2.2, m2: 0.6, x1: 4, y2: 20, y3: 30 },
+        median: 5,
+        description: "Máxima nitidez y colores vibrantes"
+      }
+    };
+
+    const config = filterConfigs[filter] || filterConfigs.none;
+
+    // Recortar producto con FILTROS CONFIGURABLES
+    let imagePipeline = sharp(imagen.path)
       .extract({
         left: productBounds.x,
         top: productBounds.y,
         width: productBounds.width,
         height: productBounds.height
       })
-      // ✅ FILTROS OPTIMIZADOS PARA LIENZO 380px
       .modulate({
-        brightness: 1.15,    // +15% más brillo (antes 1.10)
-        saturation: 1.25,    // +25% colores más vibrantes (antes 1.18)
-        contrast: 1.20       // +20% más contraste (antes 1.12)
+        brightness: config.brightness,
+        saturation: config.saturation,
+        contrast: config.contrast
       })
-      .gamma(1.08)           // Mejora medios tonos
-      .sharpen({
-        sigma: 1.2,          // Enfoque profesional
-        m1: 1.5,
-        m2: 0.4,
-        x1: 2,
-        y2: 10,
-        y3: 20
-      })
-      .median(3)             // Reducción de ruido suave
-      .png()
-      .toBuffer();
+      .gamma(config.gamma)
+      .sharpen(config.sharpen)
+      .median(config.median);
+
+    // Aplicar tintes para filtros específicos
+    if (config.tint) {
+      imagePipeline = imagePipeline.tint(config.tint);
+    }
+
+    const croppedBuffer = await imagePipeline.png().toBuffer();
 
     // Limpiar temporal
     fs.unlinkSync(tempImagePath);
 
-    // PASO 2: PREPARAR FORMATOS ACTUALIZADOS
+    // PASO 3: PREPARAR FORMATOS ACTUALIZADOS
     const imageFormats = {
       jumpsellerCuadrado: { width: 380, height: 380, label: "Jumpseller Cuadrado (380×380)" },
       kyteCatalogo: { width: 400, height: 400, label: "Kyte Catálogo (400×400)" },
@@ -366,7 +422,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     console.log(`🖼️ Tamaño producto final: ${productWidth}x${productHeight}px`);
     console.log(`📍 Posición: (${productX}, ${productY})`);
 
-    // PASO 3: PROCESAR IMAGEN FINAL con kernel de alta calidad
+    // PASO 4: PROCESAR IMAGEN FINAL con kernel de alta calidad
     const resizedProductBuffer = await sharp(croppedBuffer)
       .resize(productWidth, productHeight, {
         kernel: 'lanczos3',  // ✅ Algoritmo de alta calidad
@@ -395,7 +451,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     .png()
     .toBuffer();
 
-    // PASO 4: GUARDAR RESULTADOS
+    // PASO 5: GUARDAR RESULTADOS
     const timestamp = Date.now();
     const processedPath = path.join("uploads", `normalizada_${timestamp}.png`);
 
@@ -406,9 +462,9 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       fs.unlinkSync(imagen.path);
     }
 
-    console.log("🎉 Procesamiento completado con filtros optimizados para 380px");
+    console.log("🎉 Procesamiento completado con filtro:", filter);
 
-    // PASO 5: ENVIAR RESPUESTA
+    // PASO 6: ENVIAR RESPUESTA ACTUALIZADA
     res.json({
       success: true,
       procesada: `/uploads/${path.basename(processedPath)}`,
@@ -426,10 +482,16 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       },
       detalles: {
         formato: format.label,
-        metodo: 'Detección Automática + Normalización + Filtros Optimizados',
+        metodo: `Detección Automática + Filtro ${filter.charAt(0).toUpperCase() + filter.slice(1)}`,
         productoDetectado: `${productBounds.width} × ${productBounds.height} px`,
         escalaAplicada: `${(escalaFinal * 100).toFixed(1)}%`,
-        mejorasAplicadas: 'Brillo +15%, Saturación +25%, Contraste +20% (optimizado para 380px)'
+        filtroAplicado: filter,
+        descripcionFiltro: config.description,
+        configuracionFiltro: {
+          brillo: `${((config.brightness - 1) * 100).toFixed(0)}%`,
+          saturacion: `${((config.saturation - 1) * 100).toFixed(0)}%`,
+          contraste: `${((config.contrast - 1) * 100).toFixed(0)}%`
+        }
       }
     });
 
