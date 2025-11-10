@@ -3,190 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Normalizador de Imágenes para E-commerce</title>
+    <title>Normalizador de Imágenes</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>🛍️ Normalizador de Imágenes</h1>
-            <p class="subtitle">Optimiza tus productos para e-commerce automáticamente</p>
+        <header class="compact-header">
+            <h1>🛍️ Normalizador</h1>
+            <p class="subtitle">Imágenes para e-commerce</p>
         </header>
 
-        <section class="upload-section">
-            <div class="compact-upload">
-                <h3>📸 Seleccionar Imagen</h3>
-                <p class="upload-info">Formatos: JPG, PNG, WEBP (Máx. 10MB)</p>
-                
-                <div class="compact-upload-area">
+        <!-- SECCIÓN SUPERIOR COMPACTA -->
+        <section class="control-panel">
+            <!-- UPLOAD Y FORMATOS JUNTOS -->
+            <div class="quick-controls">
+                <div class="upload-mini">
                     <input type="file" id="imageInput" accept="image/*">
-                    <button class="btn-primary" id="uploadBtn">📁 Elegir Archivo</button>
-                    <span id="fileName">Ningún archivo seleccionado</span>
+                    <button class="btn-mini" id="uploadBtn">📁 Imagen</button>
+                    <span id="fileName">Ningún archivo</span>
                 </div>
+
+                <div class="format-selector-mini">
+                    <select id="formatSelect" class="format-select">
+                        <option value="jumpsellerCuadrado">Jumpseller (380×380)</option>
+                        <option value="kyteCatalogo">Kyte (400×400)</option>
+                        <option value="square">Cuadrado (527×527)</option>
+                        <option value="proportion65">6:5 (1200×1000)</option>
+                        <option value="portrait">Retrato (527×702)</option>
+                        <option value="landscape">Apaisado (527×296)</option>
+                        <option value="rectangular">Rectangular (527×395)</option>
+                    </select>
+                </div>
+
+                <button class="btn-primary-mini" id="processBtn" disabled>🚀 Normalizar</button>
             </div>
 
-            <div class="format-selector">
-                <h3>Selecciona el formato de salida:</h3>
-                <div class="format-grid">
-                    <div class="format-option" data-format="proportion65">
-                        <strong>6:5 Proporción</strong>
-                        <div>1200×1000px</div>
-                    </div>
-                    <div class="format-option" data-format="square">
-                        <strong>Cuadrado 1:1</strong>
-                        <div>527×527px</div>
-                    </div>
-                    <div class="format-option" data-format="portrait">
-                        <strong>Retrato 3:4</strong>
-                        <div>527×702px</div>
-                    </div>
-                    <div class="format-option" data-format="landscape">
-                        <strong>Apaisado 16:9</strong>
-                        <div>527×296px</div>
-                    </div>
-                    <div class="format-option" data-format="rectangular">
-                        <strong>Rectangular 4:3</strong>
-                        <div>527×395px</div>
-                    </div>
-                    <div class="format-option selected" data-format="jumpsellerCuadrado">
-                        <strong>Jumpseller Cuadrado</strong>
-                        <div>380×380px</div>
-                    </div>
-                    <div class="format-option" data-format="kyteCatalogo">
-                        <strong>Kyte Catálogo</strong>
-                        <div>400×400px</div>
-                    </div>
+            <!-- CONTROLES RÁPIDOS -->
+            <div class="action-controls">
+                <div class="scale-mini">
+                    <label>Escala:</label>
+                    <input type="range" id="scaleSliderMini" min="25" max="200" value="80" class="mini-slider">
+                    <span id="scaleValueMini">80%</span>
                 </div>
-            </div>
 
-            <div class="buttons">
-                <button class="btn-primary" id="processBtn" disabled>🚀 Normalizar Imagen</button>
+                <div class="filter-mini">
+                    <select id="filterSelect" class="filter-select">
+                        <option value="none">Sin Filtro</option>
+                        <option value="juno">Juno</option>
+                        <option value="paris">París</option>
+                        <option value="lofi">Lo-Fi</option>
+                        <option value="cristal">Cristal</option>
+                    </select>
+                </div>
+
+                <button class="btn-secondary-mini" id="applyScaleBtn">📏 Escala</button>
+                <button class="btn-secondary-mini" id="applyFilterBtn">🎨 Filtro</button>
+                <button class="btn-secondary-mini" id="downloadBtn">💾 Descargar</button>
             </div>
         </section>
 
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p>Procesando imagen...</p>
-        </div>
-
-        <div class="error" id="errorMessage"></div>
-        <div class="success" id="successMessage"></div>
-
-        <!-- SECCIÓN: Preview inmediato al subir imagen -->
-        <section class="preview-section" id="previewSection">
-            <h2>📋 Vista Previa - Imagen Original</h2>
-            <div class="preview-grid">
-                <div class="image-container">
-                    <h3>📸 Imagen Original Subida</h3>
-                    <img id="originalImagePreview" src="" alt="Imagen original">
+        <!-- VISTA PREVIA COMPACTA -->
+        <div class="preview-compact" id="previewCompact">
+            <div class="image-comparison">
+                <div class="image-box">
+                    <h4>Original</h4>
+                    <img id="originalImageCompact" src="" alt="Original">
                 </div>
-
-                <div class="tech-specs">
-                    <h3>📊 Datos Técnicos Originales (Detección Automática)</h3>
-                    <div class="specs-grid" id="originalSpecsPreview">
-                        <!-- Datos técnicos se llenarán aquí inmediatamente -->
-                    </div>
+                <div class="image-box">
+                    <h4>Normalizada</h4>
+                    <img id="processedImageCompact" src="" alt="Procesada">
                 </div>
             </div>
             
-            <div class="buttons">
-                <button class="btn-primary" id="processFromPreviewBtn">🚀 Proceder a Normalizar</button>
+            <!-- DATOS TÉCNICOS SUPER COMPACTOS -->
+            <div class="tech-specs-compact" id="techSpecsCompact">
+                <!-- Se llenará dinámicamente -->
             </div>
-        </section>
+        </div>
 
-        <!-- SECCIÓN: Resultados del procesamiento -->
-        <section class="results-section" id="resultsSection">
-            <h2>🎯 Resultado del Procesamiento</h2>
-            <div class="results-grid">
-                <div class="image-container">
-                    <h3>📸 Imagen Original</h3>
-                    <img id="originalImage" src="" alt="Imagen original">
-                    <div class="tech-specs" style="margin-top: 20px;">
-                        <h4>📊 Datos Técnicos Originales</h4>
-                        <div class="specs-grid" id="originalSpecs">
-                            <!-- Se llenará con los mismos datos del preview -->
-                        </div>
-                    </div>
-                </div>
+        <!-- MENSAJES COMPACTOS -->
+        <div class="loading-compact" id="loadingCompact">
+            <div class="spinner-mini"></div>
+            <span>Procesando...</span>
+        </div>
 
-                <div class="image-container">
-                    <h3>🔄 Imagen Normalizada</h3>
-                    <img id="processedImage" src="" alt="Imagen normalizada">
-                    <div class="tech-specs" style="margin-top: 20px;">
-                        <h4>📈 Datos Técnicos Procesados</h4>
-                        <div class="specs-grid" id="processedSpecs">
-                            <!-- Datos procesados se llenarán aquí -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SECCIÓN DE AJUSTES AVANZADOS CON BOTONES SEPARADOS -->
-            <div class="adjustment-section" id="adjustmentSection">
-                <h3>🎛️ Ajustes Avanzados</h3>
-                
-                <!-- SECCIÓN ESCALA -->
-                <div class="scale-section">
-                    <h4>📏 Ajustar Tamaño del Producto</h4>
-                    <p class="section-description">Modifica el tamaño del producto manteniendo los filtros actuales:</p>
-                    
-                    <div class="scale-control">
-                        <div class="scale-value" id="scaleValue">80%</div>
-                        <input type="range" class="scale-slider" id="scaleSlider" 
-                               min="25" max="200" value="80" step="1">
-                        <div class="scale-labels">
-                            <span>25% (Pequeño)</span>
-                            <span>80% (Automático)</span>
-                            <span>200% (Grande)</span>
-                        </div>
-                    </div>
-                    
-                    <div class="manual-scale">
-                        <label for="manualScaleInput">O ingresa el valor manualmente:</label>
-                        <input type="number" id="manualScaleInput" min="25" max="200" value="80">
-                        <span>%</span>
-                    </div>
-                </div>
-
-                <!-- SECCIÓN FILTROS -->
-                <div class="filters-section">
-                    <h4>🎨 Aplicar Filtros Estéticos</h4>
-                    <p class="section-description">Elige un filtro y aplícalo a la imagen:</p>
-                    
-                    <div class="filter-preview">
-                        <h5>Filtro seleccionado: <span id="selectedFilterName">Sin Filtro</span></h5>
-                        <div id="filterDescription" class="filter-description">
-                            Imagen normalizada sin efectos adicionales
-                        </div>
-                    </div>
-                    
-                    <div class="filters-grid">
-                        <div class="filter-option selected" data-filter="none">
-                            <strong>Sin Filtro</strong>
-                        </div>
-                        <div class="filter-option" data-filter="juno">
-                            <strong>Juno</strong>
-                        </div>
-                        <div class="filter-option" data-filter="paris">
-                            <strong>París</strong>
-                        </div>
-                        <div class="filter-option" data-filter="lofi">
-                            <strong>Lo-Fi</strong>
-                        </div>
-                        <div class="filter-option" data-filter="cristal">
-                            <strong>Cristal</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- BOTONES DE ACCIÓN SEPARADOS -->
-                <div class="buttons">
-                    <button class="btn-secondary" id="applyScaleBtn">📏 Aplicar Solo Escala</button>
-                    <button class="btn-primary" id="applyFilterBtn">🎨 Aplicar/Quitar Filtro</button>
-                    <button class="btn-secondary" id="downloadBtn">💾 Descargar Imagen</button>
-                </div>
-            </div>
-        </section>
+        <div class="message-compact error" id="errorMessageCompact"></div>
+        <div class="message-compact success" id="successMessageCompact"></div>
     </div>
 
     <script src="script.js"></script>
