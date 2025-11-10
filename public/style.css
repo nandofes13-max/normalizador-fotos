@@ -1,4 +1,4 @@
-/* CSS ULTRA COMPACTO */
+/* CSS COMPACTO MEJORADO */
 * {
     margin: 0;
     padding: 0;
@@ -9,15 +9,16 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
-    padding: 10px;
+    padding: 15px;
+    font-size: 14px; /* ✅ TEXTO MÁS GRANDE */
 }
 
 .container {
     max-width: 1400px;
     margin: 0 auto;
     background: white;
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
     overflow: hidden;
 }
 
@@ -25,24 +26,24 @@ body {
 .compact-header {
     background: linear-gradient(135deg, #2c3e50, #34495e);
     color: white;
-    padding: 15px 20px;
+    padding: 20px;
     text-align: center;
 }
 
 .compact-header h1 {
-    font-size: 1.5em;
-    margin-bottom: 2px;
+    font-size: 1.8em; /* ✅ MÁS GRANDE */
+    margin-bottom: 5px;
     font-weight: 600;
 }
 
 .subtitle {
-    font-size: 0.85em;
-    opacity: 0.8;
+    font-size: 1em; /* ✅ MÁS GRANDE */
+    opacity: 0.9;
 }
 
 /* PANEL DE CONTROL COMPACTO */
 .control-panel {
-    padding: 15px 20px;
+    padding: 20px;
     background: #f8f9ff;
     border-bottom: 1px solid #e2e8f0;
 }
@@ -50,15 +51,15 @@ body {
 .quick-controls {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 15px;
+    margin-bottom: 15px;
     flex-wrap: wrap;
 }
 
 .upload-mini {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
 #imageInput {
@@ -66,10 +67,10 @@ body {
 }
 
 .btn-mini, .btn-primary-mini, .btn-secondary-mini {
-    padding: 6px 12px;
+    padding: 8px 16px; /* ✅ MÁS ESPACIOSO */
     border: none;
-    border-radius: 5px;
-    font-size: 0.8em;
+    border-radius: 6px;
+    font-size: 0.9em; /* ✅ MÁS GRANDE */
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -94,68 +95,80 @@ body {
 
 .btn-mini:hover, .btn-secondary-mini:hover {
     background: #cbd5e0;
+    transform: translateY(-1px);
 }
 
 .btn-primary-mini:hover {
     background: #5a67d8;
+    transform: translateY(-1px);
 }
 
 #fileName {
-    font-size: 0.75em;
+    font-size: 0.85em; /* ✅ MÁS GRANDE */
     color: #718096;
     font-style: italic;
-    max-width: 120px;
+    max-width: 150px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .format-select, .filter-select {
-    padding: 6px 8px;
+    padding: 8px 12px; /* ✅ MÁS ESPACIOSO */
     border: 1px solid #e2e8f0;
-    border-radius: 5px;
-    font-size: 0.8em;
+    border-radius: 6px;
+    font-size: 0.9em; /* ✅ MÁS GRANDE */
     background: white;
-    min-width: 150px;
+    min-width: 180px;
 }
 
 /* CONTROLES DE ACCIÓN */
 .action-controls {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     flex-wrap: wrap;
 }
 
 .scale-mini {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.8em;
+    gap: 8px;
+    font-size: 0.9em; /* ✅ MÁS GRANDE */
     color: #4a5568;
 }
 
 .mini-slider {
-    width: 80px;
-    height: 4px;
+    width: 100px; /* ✅ MÁS ANCHO */
+    height: 6px;
+}
+
+.manual-input {
+    width: 60px; /* ✅ CAMPO MANUAL */
+    padding: 4px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.9em;
 }
 
 #scaleValueMini {
     font-weight: 600;
-    min-width: 30px;
+    min-width: 35px;
+    font-size: 0.9em;
 }
 
 /* VISTA PREVIA COMPACTA */
 .preview-compact {
-    padding: 15px 20px;
+    padding: 20px;
     display: none;
 }
 
 .image-comparison {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin-bottom: 15px;
+    gap: 25px;
+    margin-bottom: 0;
 }
 
 .image-box {
@@ -163,39 +176,46 @@ body {
 }
 
 .image-box h4 {
-    font-size: 0.9em;
-    margin-bottom: 8px;
-    color: #4a5568;
+    font-size: 1.1em; /* ✅ MÁS GRANDE */
+    margin-bottom: 12px;
+    color: #2d3748;
+    font-weight: 600;
 }
 
 .image-box img {
     max-width: 100%;
-    max-height: 300px;
-    border-radius: 5px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    max-height: 350px; /* ✅ MÁS GRANDE */
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border: 1px solid #e2e8f0;
+    margin-bottom: 15px;
+}
+
+/* ✅ DATOS TÉCNICOS DEBAJO DE CADA IMAGEN */
+.image-specs {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    font-size: 0.85em;
+    text-align: left;
+    max-height: 200px;
+    overflow-y: auto; /* ✅ SCROLL SI ES NECESARIO */
     border: 1px solid #e2e8f0;
 }
 
-/* DATOS TÉCNICOS SUPER COMPACTOS */
-.tech-specs-compact {
-    background: #f8f9fa;
-    border-radius: 6px;
-    padding: 10px;
-    font-size: 0.75em;
-}
-
 .specs-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .spec-item-compact {
     display: flex;
     justify-content: space-between;
-    padding: 3px 6px;
+    padding: 6px 8px;
     background: white;
-    border-radius: 3px;
+    border-radius: 4px;
+    border-left: 3px solid #667eea;
 }
 
 .spec-item-compact:nth-child(even) {
@@ -205,12 +225,12 @@ body {
 /* MENSAJES COMPACTOS */
 .loading-compact, .message-compact {
     display: none;
-    padding: 8px 15px;
-    margin: 0 20px 10px;
-    border-radius: 5px;
-    font-size: 0.8em;
+    padding: 12px 20px;
+    margin: 0 20px 15px;
+    border-radius: 6px;
+    font-size: 0.9em; /* ✅ MÁS GRANDE */
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
 .loading-compact {
@@ -231,11 +251,11 @@ body {
 }
 
 .spinner-mini {
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid #667eea;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #667eea;
     border-radius: 50%;
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
     animation: spin 1s linear infinite;
 }
 
@@ -246,8 +266,13 @@ body {
 
 /* RESPONSIVE */
 @media (max-width: 768px) {
+    body {
+        padding: 10px;
+        font-size: 13px;
+    }
+    
     .container {
-        margin: 5px;
+        margin: 0;
     }
     
     .quick-controls, .action-controls {
@@ -256,19 +281,21 @@ body {
     
     .image-comparison {
         grid-template-columns: 1fr;
-        gap: 10px;
+        gap: 20px;
     }
     
     .image-box img {
-        max-height: 200px;
+        max-height: 250px;
     }
     
-    .specs-list {
-        grid-template-columns: 1fr;
+    .scale-mini {
+        flex-wrap: wrap;
+        justify-content: center;
     }
 }
 
 button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    transform: none !important;
 }
