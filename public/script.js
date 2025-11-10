@@ -41,6 +41,9 @@ class ImageNormalizer {
         // Actualizar previsualización del filtro
         this.updateFilterPreview();
         
+        // ✅ ACTUALIZAR TEXTO DEL BOTÓN DE FILTROS
+        this.updateFilterButtonText();
+        
         console.log('Filtro seleccionado:', this.selectedFilter);
     }
 
@@ -62,6 +65,21 @@ class ImageNormalizer {
         filterDescription.textContent = info.description;
     }
 
+    // ✅ NUEVA FUNCIÓN: Actualizar texto del botón de filtros
+    updateFilterButtonText() {
+        const filterBtn = document.getElementById('applyFilterBtn');
+        if (this.selectedFilter === "none") {
+            filterBtn.textContent = "🔄 Quitar Filtros";
+            filterBtn.classList.remove('btn-primary');
+            filterBtn.classList.add('btn-secondary');
+        } else {
+            const filterName = this.selectedFilter.charAt(0).toUpperCase() + this.selectedFilter.slice(1);
+            filterBtn.textContent = `🎨 Aplicar ${filterName}`;
+            filterBtn.classList.remove('btn-secondary');
+            filterBtn.classList.add('btn-primary');
+        }
+    }
+
     initializeEventListeners() {
         // Upload area
         const uploadArea = document.getElementById('uploadArea');
@@ -80,7 +98,11 @@ class ImageNormalizer {
         // Buttons
         document.getElementById('processBtn').addEventListener('click', () => this.processImage());
         document.getElementById('processFromPreviewBtn').addEventListener('click', () => this.processImage());
-        document.getElementById('reprocessBtn').addEventListener('click', () => this.reprocessImage());
+        
+        // ✅ NUEVOS BOTONES SEPARADOS
+        document.getElementById('applyScaleBtn').addEventListener('click', () => this.applyScaleOnly());
+        document.getElementById('applyFilterBtn').addEventListener('click', () => this.applyFilterAction());
+        
         document.getElementById('downloadBtn').addEventListener('click', () => this.downloadImage());
 
         // Scale slider
@@ -275,7 +297,7 @@ class ImageNormalizer {
         this.showLoading('🔄 Normalizando imagen...');
 
         try {
-            // ✅ MODIFICADO: Enviar como proceso inicial (true)
+            // ✅ Proceso inicial - normalización básica
             const result = await this.sendProcessRequest(this.currentScale, "none", true);
             this.displayProcessedResult(result);
             this.hideLoading();
@@ -287,26 +309,64 @@ class ImageNormalizer {
         }
     }
 
-    async reprocessImage() {
-        console.log('🔍 DEBUG: Click en reprocessImage');
-        console.log('🔍 DEBUG: currentScale =', this.currentScale);
-        console.log('🔍 DEBUG: currentFormat =', this.currentFormat);
-        console.log('🔍 DEBUG: selectedFilter =', this.selectedFilter);
-        console.log('🔍 DEBUG: currentImage =', this.currentImage ? 'SÍ' : 'NO');
+    // ✅ NUEVA FUNCIÓN: Aplicar solo escala (RESPETANDO el filtro actual)
+    async applyScaleOnly() {
+        console.log('🔍 DEBUG: Aplicando solo escala');
+        console.log('🔍 DEBUG: Nueva escala =', this.currentScale);
+        console.log('🔍 DEBUG: Filtro actual =', this.selectedFilter);
         
         if (!this.currentImage || !this.currentFormat) {
             this.showError('No hay imagen para reprocesar.');
             return;
         }
 
-        this.showLoading('🔄 Aplicando filtro...');
+        this.showLoading('📏 Ajustando escala...');
 
         try {
-            // ✅ MODIFICADO: Enviar como NO proceso inicial (false)
+            // ✅ MANTIENE el filtro actual, solo cambia escala
+            // isInitialProcess = false para mantener filtros si los hay
             const result = await this.sendProcessRequest(this.currentScale, this.selectedFilter, false);
             this.displayProcessedResult(result);
             this.hideLoading();
-            this.showSuccess('✅ Filtro aplicado correctamente!');
+            this.showSuccess('✅ Escala ajustada correctamente!');
+
+        } catch (error) {
+            this.hideLoading();
+            this.showError('Error al ajustar escala: ' + error.message);
+        }
+    }
+
+    // ✅ NUEVA FUNCIÓN: Aplicar/Quitar filtro (RESPETANDO la escala actual)
+    async applyFilterAction() {
+        console.log('🔍 DEBUG: Aplicando/Quitando filtro');
+        console.log('🔍 DEBUG: Filtro seleccionado =', this.selectedFilter);
+        console.log('🔍 DEBUG: Escala actual =', this.currentScale);
+        
+        if (!this.currentImage || !this.currentFormat) {
+            this.showError('No hay imagen para reprocesar.');
+            return;
+        }
+
+        const loadingMessage = this.selectedFilter === "none" 
+            ? '🔄 Quitando filtros...' 
+            : `🎨 Aplicando filtro ${this.selectedFilter}...`;
+        
+        this.showLoading(loadingMessage);
+
+        try {
+            // ✅ SI es "none", usa proceso inicial (true) para QUITAR filtros
+            // ✅ SI es otro filtro, usa proceso normal (false) para APLICAR filtros
+            const isInitialProcess = this.selectedFilter === "none";
+            const result = await this.sendProcessRequest(this.currentScale, this.selectedFilter, isInitialProcess);
+            
+            this.displayProcessedResult(result);
+            this.hideLoading();
+            
+            const successMessage = this.selectedFilter === "none" 
+                ? '✅ Filtros quitados correctamente!' 
+                : `✅ Filtro ${this.selectedFilter} aplicado correctamente!`;
+            
+            this.showSuccess(successMessage);
 
         } catch (error) {
             this.hideLoading();
@@ -314,7 +374,7 @@ class ImageNormalizer {
         }
     }
 
-    // ✅ MODIFICADA: Ahora acepta parámetro isInitialProcess
+    // ✅ FUNCIÓN: Enviar solicitud de procesamiento
     async sendProcessRequest(scale, filter = "none", isInitialProcess = false) {
         console.log('🔍 DEBUG: Enviando solicitud con:');
         console.log('  - Escala:', scale);
@@ -326,7 +386,7 @@ class ImageNormalizer {
         formData.append('imageFormat', this.currentFormat);
         formData.append('userScale', scale.toString());
         formData.append('filter', filter);
-        formData.append('isInitialProcess', isInitialProcess.toString()); // ← NUEVO PARÁMETRO
+        formData.append('isInitialProcess', isInitialProcess.toString());
 
         const response = await fetch('/procesar', {
             method: 'POST',
@@ -365,7 +425,7 @@ class ImageNormalizer {
         });
     }
 
-    // ✅ NUEVA FUNCIÓN: Actualizar información del método de procesamiento
+    // ✅ FUNCIÓN: Actualizar información del método de procesamiento
     updateProcessMethodInfo(detalles) {
         const filterPreview = document.querySelector('.filter-preview');
         if (filterPreview) {
@@ -451,18 +511,16 @@ class ImageNormalizer {
         
         document.getElementById('processBtn').disabled = true;
         document.getElementById('processFromPreviewBtn').disabled = true;
-        if (document.getElementById('reprocessBtn')) {
-            document.getElementById('reprocessBtn').disabled = true;
-        }
+        document.getElementById('applyScaleBtn').disabled = true;
+        document.getElementById('applyFilterBtn').disabled = true;
     }
 
     hideLoading() {
         document.getElementById('loading').style.display = 'none';
         document.getElementById('processBtn').disabled = false;
         document.getElementById('processFromPreviewBtn').disabled = false;
-        if (document.getElementById('reprocessBtn')) {
-            document.getElementById('reprocessBtn').disabled = false;
-        }
+        document.getElementById('applyScaleBtn').disabled = false;
+        document.getElementById('applyFilterBtn').disabled = false;
     }
 
     showError(message) {
