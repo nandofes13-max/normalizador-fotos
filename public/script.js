@@ -81,13 +81,13 @@ class ImageNormalizer {
     }
 
     initializeEventListeners() {
-        // Upload area
-        const uploadArea = document.getElementById('uploadArea');
+        // ✅ UPLOAD COMPACTO - Botón para seleccionar archivo
+        document.getElementById('uploadBtn').addEventListener('click', () => {
+            document.getElementById('imageInput').click();
+        });
+
+        // Input de archivo
         const imageInput = document.getElementById('imageInput');
-        
-        uploadArea.addEventListener('click', () => imageInput.click());
-        uploadArea.addEventListener('dragover', (e) => this.handleDragOver(e));
-        uploadArea.addEventListener('drop', (e) => this.handleDrop(e));
         imageInput.addEventListener('change', (e) => this.handleFileSelect(e));
 
         // Format selection
@@ -124,27 +124,31 @@ class ImageNormalizer {
             document.getElementById('scaleValue').textContent = `${value}%`;
             e.target.value = value;
         });
-    }
 
-    handleDragOver(e) {
-        e.preventDefault();
-        document.getElementById('uploadArea').classList.add('highlight');
-    }
+        // ✅ DRAG & DROP para el área compacta (opcional)
+        document.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
 
-    handleDrop(e) {
-        e.preventDefault();
-        document.getElementById('uploadArea').classList.remove('highlight');
-        
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            this.handleImageFile(files[0]);
-        }
+        document.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                this.handleImageFile(files[0]);
+                // Mostrar nombre del archivo
+                document.getElementById('fileName').textContent = files[0].name;
+                document.getElementById('fileName').classList.add('has-file');
+            }
+        });
     }
 
     handleFileSelect(e) {
         const files = e.target.files;
         if (files.length > 0) {
             this.handleImageFile(files[0]);
+            // ✅ Mostrar nombre del archivo
+            document.getElementById('fileName').textContent = files[0].name;
+            document.getElementById('fileName').classList.add('has-file');
         }
     }
 
@@ -513,6 +517,7 @@ class ImageNormalizer {
         document.getElementById('processFromPreviewBtn').disabled = true;
         document.getElementById('applyScaleBtn').disabled = true;
         document.getElementById('applyFilterBtn').disabled = true;
+        document.getElementById('uploadBtn').disabled = true;
     }
 
     hideLoading() {
@@ -521,6 +526,7 @@ class ImageNormalizer {
         document.getElementById('processFromPreviewBtn').disabled = false;
         document.getElementById('applyScaleBtn').disabled = false;
         document.getElementById('applyFilterBtn').disabled = false;
+        document.getElementById('uploadBtn').disabled = false;
     }
 
     showError(message) {
