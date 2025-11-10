@@ -9,8 +9,8 @@
 <body>
     <div class="container">
         <header class="compact-header">
-            <h1>🛍️ Normalizador</h1>
-            <p class="subtitle">Imágenes para e-commerce</p>
+            <h1>🛍️ Normalizador de Imágenes</h1>
+            <p class="subtitle">Optimiza productos para e-commerce</p>
         </header>
 
         <!-- SECCIÓN SUPERIOR COMPACTA -->
@@ -19,23 +19,23 @@
             <div class="quick-controls">
                 <div class="upload-mini">
                     <input type="file" id="imageInput" accept="image/*">
-                    <button class="btn-mini" id="uploadBtn">📁 Imagen</button>
-                    <span id="fileName">Ningún archivo</span>
+                    <button class="btn-mini" id="uploadBtn">📁 Seleccionar Imagen</button>
+                    <span id="fileName">Ningún archivo seleccionado</span>
                 </div>
 
                 <div class="format-selector-mini">
                     <select id="formatSelect" class="format-select">
-                        <option value="jumpsellerCuadrado">Jumpseller (380×380)</option>
-                        <option value="kyteCatalogo">Kyte (400×400)</option>
-                        <option value="square">Cuadrado (527×527)</option>
-                        <option value="proportion65">6:5 (1200×1000)</option>
-                        <option value="portrait">Retrato (527×702)</option>
-                        <option value="landscape">Apaisado (527×296)</option>
-                        <option value="rectangular">Rectangular (527×395)</option>
+                        <option value="jumpsellerCuadrado">Jumpseller Cuadrado (380×380)</option>
+                        <option value="kyteCatalogo">Kyte Catálogo (400×400)</option>
+                        <option value="square">Cuadrado 1:1 (527×527)</option>
+                        <option value="proportion65">Proporción 6:5 (1200×1000)</option>
+                        <option value="portrait">Retrato 3:4 (527×702)</option>
+                        <option value="landscape">Apaisado 16:9 (527×296)</option>
+                        <option value="rectangular">Rectangular 4:3 (527×395)</option>
                     </select>
                 </div>
 
-                <button class="btn-primary-mini" id="processBtn" disabled>🚀 Normalizar</button>
+                <button class="btn-primary-mini" id="processBtn" disabled>🚀 Normalizar Imagen</button>
             </div>
 
             <!-- CONTROLES RÁPIDOS -->
@@ -44,6 +44,9 @@
                     <label>Escala:</label>
                     <input type="range" id="scaleSliderMini" min="25" max="200" value="80" class="mini-slider">
                     <span id="scaleValueMini">80%</span>
+                    <!-- ✅ CAMPO MANUAL AGREGADO -->
+                    <input type="number" id="manualScaleInput" min="25" max="200" value="80" class="manual-input">
+                    <span>%</span>
                 </div>
 
                 <div class="filter-mini">
@@ -56,8 +59,8 @@
                     </select>
                 </div>
 
-                <button class="btn-secondary-mini" id="applyScaleBtn">📏 Escala</button>
-                <button class="btn-secondary-mini" id="applyFilterBtn">🎨 Filtro</button>
+                <button class="btn-secondary-mini" id="applyScaleBtn">📏 Aplicar Escala</button>
+                <button class="btn-secondary-mini" id="applyFilterBtn">🎨 Aplicar Filtro</button>
                 <button class="btn-secondary-mini" id="downloadBtn">💾 Descargar</button>
             </div>
         </section>
@@ -66,25 +69,28 @@
         <div class="preview-compact" id="previewCompact">
             <div class="image-comparison">
                 <div class="image-box">
-                    <h4>Original</h4>
+                    <h4>📸 Imagen Original</h4>
                     <img id="originalImageCompact" src="" alt="Original">
+                    <!-- ✅ DATOS TÉCNICOS DEBAJO DE CADA IMAGEN -->
+                    <div class="image-specs" id="originalSpecsCompact">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
                 </div>
                 <div class="image-box">
-                    <h4>Normalizada</h4>
+                    <h4>🔄 Imagen Normalizada</h4>
                     <img id="processedImageCompact" src="" alt="Procesada">
+                    <!-- ✅ DATOS TÉCNICOS DEBAJO DE CADA IMAGEN -->
+                    <div class="image-specs" id="processedSpecsCompact">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
                 </div>
-            </div>
-            
-            <!-- DATOS TÉCNICOS SUPER COMPACTOS -->
-            <div class="tech-specs-compact" id="techSpecsCompact">
-                <!-- Se llenará dinámicamente -->
             </div>
         </div>
 
         <!-- MENSAJES COMPACTOS -->
         <div class="loading-compact" id="loadingCompact">
             <div class="spinner-mini"></div>
-            <span>Procesando...</span>
+            <span>Procesando imagen...</span>
         </div>
 
         <div class="message-compact error" id="errorMessageCompact"></div>
