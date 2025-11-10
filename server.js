@@ -60,7 +60,7 @@ function detectBackgroundColor(imageData, width, height) {
     samples.push({
       r: imageData[rightIndex],
       g: imageData[rightIndex + 1],
-      b: imageData[rightIndex + 2]  // ← CORREGIDO: era 'data' en lugar de 'imageData'
+      b: imageData[rightIndex + 2]
     });
   }
   
@@ -228,14 +228,14 @@ app.post("/detectar", upload.single("imagen"), async (req, res) => {
   }
 });
 
-// ✅ ENDPOINT MEJORADO: Procesar imagen con filtros configurables
+// ✅ ENDPOINT MEJORADO: Procesar imagen con lógica mejorada para botones separados
 app.post("/procesar", upload.single("imagen"), async (req, res) => {
   const imagen = req.file;
   const { 
     imageFormat, 
     userScale = 80,
     filter = "none",
-    isInitialProcess = "false"  // ← NUEVO: recibir este parámetro
+    isInitialProcess = "false"
   } = req.body;
 
   if (!imagen) {
@@ -278,16 +278,18 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     // PASO 2: APLICAR FILTROS ESTÉTICOS SEGÚN SELECCIÓN
     console.log("🎨 Aplicando filtro:", filter);
     
-    // Configuración de filtros - MODIFICADO para proceso inicial
+    // ✅ CONFIGURACIÓN MEJORADA: Lógica inteligente para botones separados
     const filterConfigs = {
       none: {
-        brightness: isInitial ? 1.0 : 1.15,  // ← Sin filtros en proceso inicial
-        saturation: isInitial ? 1.0 : 1.25,
-        contrast: isInitial ? 1.0 : 1.20,
-        gamma: isInitial ? 1.0 : 1.08,
-        sharpen: isInitial ? { sigma: 0 } : { sigma: 1.2, m1: 1.5, m2: 0.4, x1: 2, y2: 10, y3: 20 },
-        median: isInitial ? 0 : 3,
-        description: isInitial ? "Imagen normalizada sin efectos" : "Imagen normalizada sin efectos adicionales"
+        // ✅ SI es proceso inicial O el filtro es "none" → sin filtros de calidad
+        // ✅ SI NO es proceso inicial Y el filtro es "none" (viene de botón escala) → MANTIENE filtros anteriores
+        brightness: (isInitial || filter === "none") ? 1.0 : 1.15,
+        saturation: (isInitial || filter === "none") ? 1.0 : 1.25,
+        contrast: (isInitial || filter === "none") ? 1.0 : 1.20,
+        gamma: (isInitial || filter === "none") ? 1.0 : 1.08,
+        sharpen: (isInitial || filter === "none") ? { sigma: 0 } : { sigma: 1.2, m1: 1.5, m2: 0.4, x1: 2, y2: 10, y3: 20 },
+        median: (isInitial || filter === "none") ? 0 : 3,
+        description: (isInitial || filter === "none") ? "Imagen normalizada sin efectos" : "Imagen con ajustes de calidad"
       },
       juno: {
         brightness: 1.25,
@@ -296,7 +298,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         gamma: 1.1,
         sharpen: { sigma: 1.0, m1: 1.2, m2: 0.3, x1: 1.5, y2: 8, y3: 15 },
         median: 2,
-        tint: { r: 255, g: 240, b: 220 }, // Tono cálido
+        tint: { r: 255, g: 240, b: 220 },
         description: "Tonos cálidos intensos, colores vibrantes"
       },
       paris: {
@@ -306,7 +308,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         gamma: 1.05,
         sharpen: { sigma: 0.8, m1: 1.0, m2: 0.2, x1: 1, y2: 5, y3: 10 },
         median: 4,
-        tint: { r: 255, g: 230, b: 250 }, // Tono rosado suave
+        tint: { r: 255, g: 230, b: 250 },
         description: "Tono rosado suave, efecto dreamy"
       },
       lofi: {
@@ -340,8 +342,8 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         height: productBounds.height
       });
 
-    // ✅ SOLO APLICAR FILTROS SI NO ES PROCESO INICIAL O SI ES UN FILTRO ESPECÍFICO
-    if (!isInitial || filter !== "none") {
+    // ✅ SOLO APLICAR FILTROS SI NO ES "none" O SI ES UN FILTRO ESPECÍFICO
+    if (filter !== "none") {
       imagePipeline = imagePipeline
         .modulate({
           brightness: config.brightness,
@@ -434,7 +436,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     // PASO 4: PROCESAR IMAGEN FINAL con kernel de alta calidad
     const resizedProductBuffer = await sharp(croppedBuffer)
       .resize(productWidth, productHeight, {
-        kernel: 'lanczos3',  // ✅ Algoritmo de alta calidad
+        kernel: 'lanczos3',
         fit: 'contain',
         background: { r: 255, g: 255, b: 255 }
       })
@@ -491,13 +493,15 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       },
       detalles: {
         formato: format.label,
-        metodo: isInitial ? "Detección Automática + Normalización Básica" : `Detección Automática + Filtro ${filter.charAt(0).toUpperCase() + filter.slice(1)}`,
+        metodo: isInitial ? "Detección Automática + Normalización Básica" : 
+                filter === "none" ? "Ajuste de escala (manteniendo filtros anteriores)" :
+                `Filtro ${filter.charAt(0).toUpperCase() + filter.slice(1)} aplicado`,
         productoDetectado: `${productBounds.width} × ${productBounds.height} px`,
         escalaAplicada: `${(escalaFinal * 100).toFixed(1)}%`,
         filtroAplicado: filter,
         descripcionFiltro: config.description,
         esProcesoInicial: isInitial,
-        configuracionFiltro: isInitial ? {} : {
+        configuracionFiltro: filter === "none" && !isInitial ? { estado: "Manteniendo filtros anteriores" } : {
           brillo: `${((config.brightness - 1) * 100).toFixed(0)}%`,
           saturacion: `${((config.saturation - 1) * 100).toFixed(0)}%`,
           contraste: `${((config.contrast - 1) * 100).toFixed(0)}%`
