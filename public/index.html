@@ -14,11 +14,15 @@
         </header>
 
         <section class="upload-section">
-            <div class="upload-area" id="uploadArea">
-                <div class="upload-icon">📁</div>
-                <h3>Arrastra tu imagen aquí o haz clic para seleccionar</h3>
-                <p>Formatos soportados: JPG, PNG, WEBP (Máx. 10MB)</p>
-                <input type="file" id="imageInput" accept="image/*" style="display: none;">
+            <div class="compact-upload">
+                <h3>📸 Seleccionar Imagen</h3>
+                <p class="upload-info">Formatos: JPG, PNG, WEBP (Máx. 10MB)</p>
+                
+                <div class="compact-upload-area">
+                    <input type="file" id="imageInput" accept="image/*">
+                    <button class="btn-primary" id="uploadBtn">📁 Elegir Archivo</button>
+                    <span id="fileName">Ningún archivo seleccionado</span>
+                </div>
             </div>
 
             <div class="format-selector">
@@ -122,9 +126,9 @@
                 <h3>🎛️ Ajustes Avanzados</h3>
                 
                 <!-- SECCIÓN ESCALA -->
-                <div class="scale-section" style="margin-bottom: 25px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <div class="scale-section">
                     <h4>📏 Ajustar Tamaño del Producto</h4>
-                    <p style="margin-bottom: 15px; color: #666; font-size: 0.95em;">Modifica el tamaño del producto manteniendo los filtros actuales:</p>
+                    <p class="section-description">Modifica el tamaño del producto manteniendo los filtros actuales:</p>
                     
                     <div class="scale-control">
                         <div class="scale-value" id="scaleValue">80%</div>
@@ -138,17 +142,16 @@
                     </div>
                     
                     <div class="manual-scale">
-                        <label for="manualScaleInput" style="display: block; margin-bottom: 8px; font-weight: 600; color: #4a5568;">O ingresa el valor manualmente:</label>
-                        <input type="number" id="manualScaleInput" min="25" max="200" value="80" 
-                               style="padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 6px; width: 100px; text-align: center; font-size: 1em;">
-                        <span style="margin-left: 5px; font-weight: 600;">%</span>
+                        <label for="manualScaleInput">O ingresa el valor manualmente:</label>
+                        <input type="number" id="manualScaleInput" min="25" max="200" value="80">
+                        <span>%</span>
                     </div>
                 </div>
 
                 <!-- SECCIÓN FILTROS -->
                 <div class="filters-section">
                     <h4>🎨 Aplicar Filtros Estéticos</h4>
-                    <p style="margin-bottom: 15px; color: #666; font-size: 0.95em;">Elige un filtro y aplícalo a la imagen:</p>
+                    <p class="section-description">Elige un filtro y aplícalo a la imagen:</p>
                     
                     <div class="filter-preview">
                         <h5>Filtro seleccionado: <span id="selectedFilterName">Sin Filtro</span></h5>
@@ -177,7 +180,7 @@
                 </div>
 
                 <!-- BOTONES DE ACCIÓN SEPARADOS -->
-                <div class="buttons" style="margin-top: 30px;">
+                <div class="buttons">
                     <button class="btn-secondary" id="applyScaleBtn">📏 Aplicar Solo Escala</button>
                     <button class="btn-primary" id="applyFilterBtn">🎨 Aplicar/Quitar Filtro</button>
                     <button class="btn-secondary" id="downloadBtn">💾 Descargar Imagen</button>
