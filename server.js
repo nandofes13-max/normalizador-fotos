@@ -295,7 +295,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         saturation: 1.14,
         contrast: 1.28,
         gamma: 1.08,
-        linear: 1.12,
+        //linear: 1.12,
         sharpen: { sigma: 1.8 },
         median: 2,
         description: "Calidad retail profesional"
