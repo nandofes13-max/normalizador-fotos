@@ -281,70 +281,66 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     // ✅ CONFIGURACIÓN MEJORADA: Lógica inteligente para botones separados
     const filterConfigs = {
       none: {
-        // ✅ SI es proceso inicial O el filtro es "none" → sin filtros de calidad
-        // ✅ SI NO es proceso inicial Y el filtro es "none" (viene de botón escala) → MANTIENE filtros anteriores
         brightness: (isInitial || filter === "none") ? 1.0 : 1.15,
         saturation: (isInitial || filter === "none") ? 1.0 : 1.25,
         contrast: (isInitial || filter === "none") ? 1.0 : 1.20,
         gamma: (isInitial || filter === "none") ? 1.0 : 1.08,
-        sharpen: (isInitial || filter === "none") ? { sigma: 0 } : { sigma: 1.2, m1: 1.5, m2: 0.4, x1: 2, y2: 10, y3: 20 },
-        median: (isInitial || filter === "none") ? 0 : 3,
-        description: (isInitial || filter === "none") ? "Imagen normalizada sin efectos" : "Imagen con ajustes de calidad"
+        sharpen: (isInitial || filter === "none") ? null : { sigma: 1.2 },
+        median: (isInitial || filter === "none") ? 0 : 2,
+        description: "Normal"
       },
-      calidadRetail: {  // 🆕 NUEVO FILTRO CON TUS VALORES
+
+      calidadRetail: {
         brightness: 1.12,
         saturation: 1.14,
         contrast: 1.28,
-        vibrance: 1.10,
-        clarity: 1.18,
-        sharpen: { sigma: 2.5, m1: 1.8, m2: 0.8, x1: 3, y2: 15, y3: 25 }, // Nitidez +45
-        noise_reduction: 3, // Reducir ruido +10
-        temperature: -0.02, // Temp (más frío) –2
-        tint: 0.01, // Tono +1
-        shadows: 1.08, // Sombras +8
-        highlights: 1.20, // Altas luces +20
-        whites: 1.25, // Blancos +25
-        blacks: 0.88, // Negros –12
-        gamma: 1.05,
-        description: "Máxima calidad retail: nitidez profesional + colores vibrantes"
+        gamma: 1.08,
+        linear: 1.12,
+        sharpen: { sigma: 1.8 },
+        median: 2,
+        description: "Calidad retail profesional"
       },
+
       juno: {
         brightness: 1.25,
         saturation: 1.35,
         contrast: 1.15,
         gamma: 1.1,
-        sharpen: { sigma: 1.0, m1: 1.2, m2: 0.3, x1: 1.5, y2: 8, y3: 15 },
+        sharpen: { sigma: 1.0 },
         median: 2,
-        tint: { r: 255, g: 240, b: 220 },
-        description: "Tonos cálidos intensos, colores vibrantes"
+        tintRGB: { r: 255, g: 240, b: 220 },
+        description: "Juno"
       },
+
       paris: {
         brightness: 1.18,
         saturation: 1.15,
         contrast: 1.10,
         gamma: 1.05,
-        sharpen: { sigma: 0.8, m1: 1.0, m2: 0.2, x1: 1, y2: 5, y3: 10 },
+        sharpen: { sigma: 0.8 },
         median: 4,
-        tint: { r: 255, g: 230, b: 250 },
-        description: "Tono rosado suave, efecto dreamy"
+        tintRGB: { r: 255, g: 230, b: 250 },
+        description: "Paris"
       },
+
       lofi: {
         brightness: 1.10,
         saturation: 1.40,
         contrast: 1.30,
         gamma: 1.15,
-        sharpen: { sigma: 1.5, m1: 2.0, m2: 0.5, x1: 3, y2: 15, y3: 25 },
+        sharpen: { sigma: 1.5 },
         median: 1,
-        description: "Saturación alta + contraste fuerte"
+        description: "Lofi"
       },
+
       cristal: {
         brightness: 1.12,
         saturation: 1.30,
         contrast: 1.25,
         gamma: 1.12,
-        sharpen: { sigma: 1.8, m1: 2.2, m2: 0.6, x1: 4, y2: 20, y3: 30 },
+        sharpen: { sigma: 1.8 },
         median: 5,
-        description: "Máxima nitidez y colores vibrantes"
+        description: "Cristal"
       }
     };
 
@@ -359,7 +355,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         height: productBounds.height
       });
 
-    // ✅ SOLO APLICAR FILTROS SI NO ES "none" O SI ES UN FILTRO ESPECÍFICO
+    // ✅ APLICAR FILTROS MEJORADO
     if (filter !== "none") {
       imagePipeline = imagePipeline
         .modulate({
@@ -369,46 +365,25 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         })
         .gamma(config.gamma);
 
-      // ✅ APLICAR VIBRANCE (si existe en la configuración)
-      if (config.vibrance && config.vibrance !== 1.0) {
-        imagePipeline = imagePipeline.modulate({
-          lightness: config.vibrance
-        });
+      // ✅ APLICAR LINEAR (si existe)
+      if (config.linear) {
+        imagePipeline = imagePipeline.linear(config.linear);
       }
 
-      // ✅ APLICAR NITIDEZ MEJORADA para calidadRetail
+      // ✅ APLICAR SHARPEN (si existe)
       if (config.sharpen) {
         imagePipeline = imagePipeline.sharpen(config.sharpen);
       }
 
-      // ✅ APLICAR REDUCCIÓN DE RUIDO
-      if (config.noise_reduction && config.noise_reduction > 0) {
-        imagePipeline = imagePipeline.median(config.noise_reduction);
-      }
-
-      // ✅ APLICAR TEMPERATURA Y TONO MEJORADO
-      if (config.temperature !== undefined || config.tint !== undefined) {
-        const tintAdjustments = {};
-        if (config.temperature) tintAdjustments.tint = config.temperature;
-        if (config.tint) tintAdjustments.hue = config.tint;
-        imagePipeline = imagePipeline.tint(tintAdjustments);
-      }
-
-      // ✅ APLICAR AJUSTES TONALES (sombras, altas luces, etc.)
-      if (config.shadows || config.highlights || config.whites || config.blacks) {
-        // Sharp no tiene estos ajustes directamente, simulamos con gamma/contraste
-        if (config.shadows) {
-          imagePipeline = imagePipeline.gamma(config.shadows);
-        }
-        if (config.highlights) {
-          imagePipeline = imagePipeline.linear(config.highlights, -(config.highlights - 1) * 0.5);
-        }
+      // ✅ APLICAR MEDIAN (si existe y es mayor a 0)
+      if (config.median && config.median > 0) {
+        imagePipeline = imagePipeline.median(config.median);
       }
     }
 
-    // Aplicar tintes para filtros específicos
-    if (config.tint && typeof config.tint === 'object') {
-      imagePipeline = imagePipeline.tint(config.tint);
+    // ✅ APLICAR TINT (si existe)
+    if (config.tintRGB) {
+      imagePipeline = imagePipeline.tint(config.tintRGB);
     }
 
     const croppedBuffer = await imagePipeline.png().toBuffer();
