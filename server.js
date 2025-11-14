@@ -90,8 +90,8 @@ function findProductBounds(imageData, width, height, backgroundColor) {
     for (let x = 0; x < width; x++) {
       const index = (y * width + x) * 4;
       const r = imageData[index];
-      const g: imageData[index + 1];
-      const b: imageData[index + 2];
+      const g = imageData[index + 1];
+      const b = imageData[index + 2];
       
       const colorDiff = Math.abs(r - backgroundColor.r) + 
                        Math.abs(g - backgroundColor.g) + 
