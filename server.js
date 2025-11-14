@@ -90,8 +90,8 @@ function findProductBounds(imageData, width, height, backgroundColor) {
     for (let x = 0; x < width; x++) {
       const index = (y * width + x) * 4;
       const r = imageData[index];
-      const g = imageData[index + 1];
-      const b = imageData[index + 2];
+      const g: imageData[index + 1];
+      const b: imageData[index + 2];
       
       const colorDiff = Math.abs(r - backgroundColor.r) + 
                        Math.abs(g - backgroundColor.g) + 
@@ -291,14 +291,15 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       },
 
       calidadRetail: {
-        brightness: 1.12,
-        saturation: 1.14,
-        contrast: 1.28,
-        gamma: 1.08,
-        //linear: 1.12,
-        sharpen: { sigma: 1.8 },
-        median: 2,
-        description: "Calidad retail profesional"
+        // ✅ VALORES EXACTOS CONVERTIDOS PARA SHARP
+        brightness: 1.18,      // Brillo +18%
+        contrast: 1.22,        // Contraste +22%
+        saturation: 1.12,      // Saturación +12% (compensa vibrance)
+        gamma: 0.96,           // Gamma 0.96
+        linear: 1.03,          // Exposure +3%
+        sharpen: { sigma: 0.6 }, // Nitidez equivalente a 0.35
+        median: 2,             // Reducción de ruido
+        description: "Valores exactos convertidos para Sharp"
       },
 
       juno: {
@@ -365,23 +366,23 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         })
         .gamma(config.gamma);
 
-      // ✅ APLICAR LINEAR (si existe)
+      // ✅ APLICAR LINEAR (exposure)
       if (config.linear) {
         imagePipeline = imagePipeline.linear(config.linear);
       }
 
-      // ✅ APLICAR SHARPEN (si existe)
+      // ✅ APLICAR SHARPEN
       if (config.sharpen) {
         imagePipeline = imagePipeline.sharpen(config.sharpen);
       }
 
-      // ✅ APLICAR MEDIAN (si existe y es mayor a 0)
+      // ✅ APLICAR MEDIAN (noise reduction)
       if (config.median && config.median > 0) {
         imagePipeline = imagePipeline.median(config.median);
       }
     }
 
-    // ✅ APLICAR TINT (si existe)
+    // ✅ APLICAR TINT (para filtros que lo usan)
     if (config.tintRGB) {
       imagePipeline = imagePipeline.tint(config.tintRGB);
     }
