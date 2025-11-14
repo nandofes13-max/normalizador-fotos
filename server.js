@@ -291,6 +291,23 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         median: (isInitial || filter === "none") ? 0 : 3,
         description: (isInitial || filter === "none") ? "Imagen normalizada sin efectos" : "Imagen con ajustes de calidad"
       },
+      calidadRetail: {  // 🆕 NUEVO FILTRO CON TUS VALORES
+        brightness: 1.12,
+        saturation: 1.14,
+        contrast: 1.28,
+        vibrance: 1.10,
+        clarity: 1.18,
+        sharpen: { sigma: 2.5, m1: 1.8, m2: 0.8, x1: 3, y2: 15, y3: 25 }, // Nitidez +45
+        noise_reduction: 3, // Reducir ruido +10
+        temperature: -0.02, // Temp (más frío) –2
+        tint: 0.01, // Tono +1
+        shadows: 1.08, // Sombras +8
+        highlights: 1.20, // Altas luces +20
+        whites: 1.25, // Blancos +25
+        blacks: 0.88, // Negros –12
+        gamma: 1.05,
+        description: "Máxima calidad retail: nitidez profesional + colores vibrantes"
+      },
       juno: {
         brightness: 1.25,
         saturation: 1.35,
@@ -350,13 +367,47 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
           saturation: config.saturation,
           contrast: config.contrast
         })
-        .gamma(config.gamma)
-        .sharpen(config.sharpen)
-        .median(config.median);
+        .gamma(config.gamma);
+
+      // ✅ APLICAR VIBRANCE (si existe en la configuración)
+      if (config.vibrance && config.vibrance !== 1.0) {
+        imagePipeline = imagePipeline.modulate({
+          lightness: config.vibrance
+        });
+      }
+
+      // ✅ APLICAR NITIDEZ MEJORADA para calidadRetail
+      if (config.sharpen) {
+        imagePipeline = imagePipeline.sharpen(config.sharpen);
+      }
+
+      // ✅ APLICAR REDUCCIÓN DE RUIDO
+      if (config.noise_reduction && config.noise_reduction > 0) {
+        imagePipeline = imagePipeline.median(config.noise_reduction);
+      }
+
+      // ✅ APLICAR TEMPERATURA Y TONO MEJORADO
+      if (config.temperature !== undefined || config.tint !== undefined) {
+        const tintAdjustments = {};
+        if (config.temperature) tintAdjustments.tint = config.temperature;
+        if (config.tint) tintAdjustments.hue = config.tint;
+        imagePipeline = imagePipeline.tint(tintAdjustments);
+      }
+
+      // ✅ APLICAR AJUSTES TONALES (sombras, altas luces, etc.)
+      if (config.shadows || config.highlights || config.whites || config.blacks) {
+        // Sharp no tiene estos ajustes directamente, simulamos con gamma/contraste
+        if (config.shadows) {
+          imagePipeline = imagePipeline.gamma(config.shadows);
+        }
+        if (config.highlights) {
+          imagePipeline = imagePipeline.linear(config.highlights, -(config.highlights - 1) * 0.5);
+        }
+      }
     }
 
     // Aplicar tintes para filtros específicos
-    if (config.tint) {
+    if (config.tint && typeof config.tint === 'object') {
       imagePipeline = imagePipeline.tint(config.tint);
     }
 
