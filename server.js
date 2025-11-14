@@ -295,7 +295,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         brightness: 1.18,      // Brillo +18%
         contrast: 1.22,        // Contraste +22%
         saturation: 1.12,      // Saturación +12% (compensa vibrance)
-        gamma: 0.96,           // Gamma 0.96
+        gamma: 1.04,           // Gamma 1.04
         linear: 1.03,          // Exposure +3%
         sharpen: { sigma: 0.6 }, // Nitidez equivalente a 0.35
         median: 2,             // Reducción de ruido
