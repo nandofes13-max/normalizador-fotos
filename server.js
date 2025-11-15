@@ -281,25 +281,25 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     // ✅ CONFIGURACIÓN MEJORADA: Lógica inteligente para botones separados
     const filterConfigs = {
       none: {
-        brightness: (isInitial || filter === "none") ? 1.0 : 1.15,
-        saturation: (isInitial || filter === "none") ? 1.0 : 1.25,
-        contrast: (isInitial || filter === "none") ? 1.0 : 1.20,
-        gamma: (isInitial || filter === "none") ? 1.0 : 1.08,
-        sharpen: (isInitial || filter === "none") ? null : { sigma: 1.2 },
-        median: (isInitial || filter === "none") ? 0 : 2,
+        brightness: (isInitial || filter === "none") ? 1.0 : 1.05,
+        saturation: (isInitial || filter === "none") ? 1.0 : 1.08,
+        contrast: (isInitial || filter === "none") ? 1.0 : 1.05,
+        gamma: (isInitial || filter === "none") ? 1.0 : 1.02,
+        sharpen: null,
+        median: 0,
         description: "Normal"
       },
 
       calidadRetail: {
-        // ✅ VALORES EXACTOS CONVERTIDOS PARA SHARP
-        brightness: 1.18,      // Brillo +18%
-        contrast: 1.22,        // Contraste +22%
-        saturation: 1.12,      // Saturación +12% (compensa vibrance)
-        gamma: 1.04,           // Gamma 1.04
-        linear: 1.03,          // Exposure +3%
-        sharpen: { sigma: 0.6 }, // Nitidez equivalente a 0.35
-        median: 2,             // Reducción de ruido
-        description: "Valores exactos convertidos para Sharp"
+        // Valores recomendados y más seguros para evitar clipping/halos
+        brightness: 1.12,      // Brillo base
+        contrast: 1.12,        // Contraste multiplicativo (se aplica vía linear)
+        saturation: 1.12,      // Saturación
+        gamma: 1.04,           // Gamma
+        linear: 1.03,          // Exposure-like multiplier adicional
+        sharpen: { sigma: 0.6, flat: 1.0, jagged: 2.0 }, // Nitidez final
+        median: 1,             // Reducción de ruido leve (1..2)
+        description: "Calidad retail ajustada"
       },
 
       juno: {
@@ -319,7 +319,7 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         contrast: 1.10,
         gamma: 1.05,
         sharpen: { sigma: 0.8 },
-        median: 4,
+        median: 2,
         tintRGB: { r: 255, g: 230, b: 250 },
         description: "Paris"
       },
@@ -337,17 +337,17 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
       cristal: {
         brightness: 1.12,
         saturation: 1.30,
-        contrast: 1.25,
+        contrast: 1.15,
         gamma: 1.12,
-        sharpen: { sigma: 1.8 },
-        median: 5,
+        sharpen: { sigma: 1.2 },
+        median: 2,
         description: "Cristal"
       }
     };
 
     const config = filterConfigs[filter] || filterConfigs.none;
 
-    // Recortar producto con FILTROS CONFIGURABLES
+    // Recortar producto
     let imagePipeline = sharp(imagen.path)
       .extract({
         left: productBounds.x,
@@ -356,43 +356,64 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         height: productBounds.height
       });
 
-    // ✅ APLICAR FILTROS MEJORADO
-    if (filter !== "none") {
-      imagePipeline = imagePipeline
-        .modulate({
-          brightness: config.brightness,
-          saturation: config.saturation,
-          contrast: config.contrast
-        })
-        .gamma(config.gamma);
-
-      // ✅ APLICAR LINEAR (exposure)
-      if (config.linear) {
-        imagePipeline = imagePipeline.linear(config.linear);
-      }
-
-      // ✅ APLICAR SHARPEN
-      if (config.sharpen) {
-        imagePipeline = imagePipeline.sharpen(config.sharpen);
-      }
-
-      // ✅ APLICAR MEDIAN (noise reduction)
-      if (config.median && config.median > 0) {
-        imagePipeline = imagePipeline.median(config.median);
-      }
+    // --- NUEVO ORDEN: 1) DENOISE (median), 2) TONAL (brightness/sat/gamma), 3) LINEAR (contrast+exposure), 4) NORMALIZE, 5) RESIZE, 6) SHARPEN ---
+    // 1) Denoise leve antes de modificar tonos
+    if (config.median && config.median > 0) {
+      imagePipeline = imagePipeline.median(config.median);
     }
 
-    // ✅ APLICAR TINT (para filtros que lo usan)
+    // 2) Modulate: brightness + saturation only (modulate no tiene contrast)
+    if (config.brightness || config.saturation) {
+      imagePipeline = imagePipeline.modulate({
+        brightness: config.brightness || 1,
+        saturation: config.saturation || 1
+      });
+    }
+
+    // 3) Gamma
+    if (config.gamma) {
+      imagePipeline = imagePipeline.gamma(config.gamma);
+    }
+
+    // 4) Linear: combine exposure (linear) and contrast into slope/intercept
+    //    contrast is applied as slope = contrast, intercept = -128*(contrast-1)
+    let slope = config.linear || 1;
+    let intercept = 0;
+    if (typeof config.contrast === 'number' && config.contrast !== 1) {
+      const contrastSlope = config.contrast;
+      const contrastIntercept = -128 * (config.contrast - 1);
+      slope = slope * contrastSlope;
+      intercept = intercept + contrastIntercept;
+    }
+    // apply linear only if differing from identity
+    if (slope !== 1 || intercept !== 0) {
+      // clamp small values for safety
+      imagePipeline = imagePipeline.linear(slope, intercept);
+    }
+
+    // 5) Gentle normalize to stretch low/high if needed
+    try {
+      if (typeof imagePipeline.normalize === 'function') {
+        imagePipeline = imagePipeline.normalize();
+      } else if (typeof imagePipeline.normalise === 'function') {
+        imagePipeline = imagePipeline.normalise();
+      }
+    } catch (e) {
+      // ignore if normalize fails
+    }
+
+    // 6) Tint if configured (kept here after tonal adjustments)
     if (config.tintRGB) {
       imagePipeline = imagePipeline.tint(config.tintRGB);
     }
 
+    // Generar el crop procesado (sin sharpen final)
     const croppedBuffer = await imagePipeline.png().toBuffer();
 
     // Limpiar temporal
     fs.unlinkSync(tempImagePath);
 
-    // PASO 3: PREPARAR FORMATOS ACTUALIZADOS
+    // PASO 3: PREPARAR FORMATOS ACTUALIZADOS (misma lógica que tenías)
     const imageFormats = {
       jumpsellerCuadrado: { width: 380, height: 380, label: "Jumpseller Cuadrado (380×380)" },
       kyteCatalogo: { width: 400, height: 400, label: "Kyte Catálogo (400×400)" },
@@ -460,15 +481,29 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
     console.log(`🖼️ Tamaño producto final: ${productWidth}x${productHeight}px`);
     console.log(`📍 Posición: (${productX}, ${productY})`);
 
-    // PASO 4: PROCESAR IMAGEN FINAL con kernel de alta calidad
-    const resizedProductBuffer = await sharp(croppedBuffer)
+    // PASO 4: RESIZE del producto (usar Lanczos) y luego SHARPEN sobre la versión resizeada
+    let resizedProductPipeline = sharp(croppedBuffer)
       .resize(productWidth, productHeight, {
         kernel: 'lanczos3',
         fit: 'contain',
         background: { r: 255, g: 255, b: 255 }
-      })
-      .png()
-      .toBuffer();
+      });
+
+    // Aplicar sharpen DESPUÉS del resize (más control y menos halos)
+    if (config.sharpen) {
+      const sigma = (typeof config.sharpen === 'object' && config.sharpen.sigma) ? config.sharpen.sigma : (typeof config.sharpen === 'number' ? config.sharpen : 0.6);
+      const flat = (config.sharpen && config.sharpen.flat) ? config.sharpen.flat : 1.0;
+      const jagged = (config.sharpen && config.sharpen.jagged) ? config.sharpen.jagged : 2.0;
+      if (sigma > 0) {
+        try {
+          resizedProductPipeline = resizedProductPipeline.sharpen(sigma, flat, jagged);
+        } catch (e) {
+          resizedProductPipeline = resizedProductPipeline.sharpen(sigma);
+        }
+      }
+    }
+
+    const resizedProductBuffer = await resizedProductPipeline.png().toBuffer();
 
     const finalImageBuffer = await sharp({
       create: {
