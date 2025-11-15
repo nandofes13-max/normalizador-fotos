@@ -356,58 +356,59 @@ app.post("/procesar", upload.single("imagen"), async (req, res) => {
         height: productBounds.height
       });
 
-    // --- NUEVO ORDEN: 1) DENOISE (median), 2) TONAL (brightness/sat/gamma), 3) LINEAR (contrast+exposure), 4) NORMALIZE, 5) RESIZE, 6) SHARPEN ---
-    // 1) Denoise leve antes de modificar tonos
-    if (config.median && config.median > 0) {
-      imagePipeline = imagePipeline.median(config.median);
-    }
+    // decidir si aplicamos efectos estéticos (NO aplicar para proceso inicial / "Normalizar")
+    const applyAesthetic = !(isInitial || filter === 'none');
 
-    // 2) Modulate: brightness + saturation only (modulate no tiene contrast)
-    if (config.brightness || config.saturation) {
-      imagePipeline = imagePipeline.modulate({
-        brightness: config.brightness || 1,
-        saturation: config.saturation || 1
-      });
-    }
-
-    // 3) Gamma
-    if (config.gamma) {
-      imagePipeline = imagePipeline.gamma(config.gamma);
-    }
-
-    // 4) Linear: combine exposure (linear) and contrast into slope/intercept
-    //    contrast is applied as slope = contrast, intercept = -128*(contrast-1)
-    let slope = config.linear || 1;
-    let intercept = 0;
-    if (typeof config.contrast === 'number' && config.contrast !== 1) {
-      const contrastSlope = config.contrast;
-      const contrastIntercept = -128 * (config.contrast - 1);
-      slope = slope * contrastSlope;
-      intercept = intercept + contrastIntercept;
-    }
-    // apply linear only if differing from identity
-    if (slope !== 1 || intercept !== 0) {
-      // clamp small values for safety
-      imagePipeline = imagePipeline.linear(slope, intercept);
-    }
-
-    // 5) Gentle normalize to stretch low/high if needed
-    try {
-      if (typeof imagePipeline.normalize === 'function') {
-        imagePipeline = imagePipeline.normalize();
-      } else if (typeof imagePipeline.normalise === 'function') {
-        imagePipeline = imagePipeline.normalise();
+    if (applyAesthetic) {
+      // --- NUEVO ORDEN: 1) DENOISE (median), 2) TONAL (brightness/sat), 3) GAMMA, 4) LINEAR (contrast+exposure),
+      // 5) NORMALIZE, 6) TINT ---
+      if (config.median && config.median > 0) {
+        imagePipeline = imagePipeline.median(config.median);
       }
-    } catch (e) {
-      // ignore if normalize fails
+
+      if (config.brightness || config.saturation) {
+        imagePipeline = imagePipeline.modulate({
+          brightness: config.brightness || 1,
+          saturation: config.saturation || 1
+        });
+      }
+
+      if (config.gamma) {
+        imagePipeline = imagePipeline.gamma(config.gamma);
+      }
+
+      // Linear: combinar exposure (linear) y contrast en slope/intercept
+      let slope = config.linear || 1;
+      let intercept = 0;
+      if (typeof config.contrast === 'number' && config.contrast !== 1) {
+        const contrastSlope = config.contrast;
+        const contrastIntercept = -128 * (config.contrast - 1);
+        slope = slope * contrastSlope;
+        intercept = intercept + contrastIntercept;
+      }
+      if (slope !== 1 || intercept !== 0) {
+        imagePipeline = imagePipeline.linear(slope, intercept);
+      }
+
+      try {
+        if (typeof imagePipeline.normalize === 'function') {
+          imagePipeline = imagePipeline.normalize();
+        } else if (typeof imagePipeline.normalise === 'function') {
+          imagePipeline = imagePipeline.normalise();
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      if (config.tintRGB) {
+        imagePipeline = imagePipeline.tint(config.tintRGB);
+      }
+    } else {
+      // Modo "normalizar" o "none": no aplicar efectos estéticos,
+      // solo hacemos una extracción limpia y dejamos el resto del pipeline de resize/sharpen intacto.
     }
 
-    // 6) Tint if configured (kept here after tonal adjustments)
-    if (config.tintRGB) {
-      imagePipeline = imagePipeline.tint(config.tintRGB);
-    }
-
-    // Generar el crop procesado (sin sharpen final)
+    // Generar el crop procesado (sin sharpen final aquí)
     const croppedBuffer = await imagePipeline.png().toBuffer();
 
     // Limpiar temporal
